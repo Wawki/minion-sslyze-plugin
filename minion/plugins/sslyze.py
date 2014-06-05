@@ -1,0 +1,374 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+
+import time
+import os
+import xml.etree.cElementTree as ET
+from urlparse import urlparse
+from minion.plugins.base import ExternalProcessPlugin
+
+
+# TODO : Add evidences
+SSLYZE_ISSUES = {
+    "Client-initiated Renegotiations": {
+        "Summary": "Client-initiated Renegotiations - Honored",
+        "Severity": "High",
+        "Description": "Test the server for client-initiated renegotiation support",
+        "Classification": {
+            "cwe_id": "310",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
+        }
+    },
+    "Secure Renegotiation":  {
+        "Summary": "Secure Renegotiation - Not supported",
+        "Severity": "High",
+        "Description": "Test the server for secure renegotiation support",
+        "Classification": {
+            "cwe_id": "310",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
+        }
+    },
+    "Compression": {
+        "Summary": "Compression - Supported",
+        "Severity": "Low",
+        "Description": "Test the server for Zlib compression support",
+        "Classification": {
+            "cwe_id": "310",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
+        }
+    },
+    "Heartbleed": {
+        "Summary": "Heartbleed vulnerable",
+        "Severity": "High",
+        "Description": "Vulnerable with the OpenSSL Heartbleed vulnerability",
+        "Classification": {
+            "cwe_id": "126",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/126.html"
+        }
+    },
+    "Session ressumption with session IDs": {
+        "Summary": "Session ressumption with session IDs - Not supported",
+        "Severity": "Info",
+        "Description": "Test the server for session ressumption support using session IDs",
+    },
+    "Session ressumption with TLS session tickets": {
+        "Summary": "Session ressumption with TLS session tickets - Not supported",
+        "Severity": "Info",
+    },
+    "Public key size": {
+        "Summary": "Public key size lower than 2048 bits",
+        "Severity": "High",
+        "Description": "Verify that the the public key size is not lower than 2048 bits",
+        "Classification": {
+            "cwe_id": "320",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/320.html"
+        }
+    },
+    "Validity date": {
+        "Summary": "Validity date before current date",
+        "Severity": "High",
+        "Description": "Verify that the validity date of the certificate is not before the current date",
+        "Classification": {
+            "cwe_id": "324",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/324.html"
+        }
+    },
+    "Hostname validation": {
+        "Summary": "Hostname Validation - NOT OK",
+        "Severity": "High",
+        "Description": "Verify if the common name matches",
+        "Classification": {
+            "cwe_id": "297",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/297.html"
+        }
+    },
+    "Certificate validation": {
+        "Summary": "Certificate validation - NOT OK",
+        "Severity": "High",
+        "Description": "Verify the validity of the server certificate against various trusts stores",
+        "Classification": {
+            "cwe_id": "295",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/295.html"
+        }
+    },
+    "SSLV2": {
+        "Summary": "SSL 2.0 - List of accepted cipher suites not empty",
+        "Severity": "High",
+        "Description"
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "SSLV3_notempty": {
+        "Summary": "SSL 3.0 -  List of accepted cipher suites not empty",
+        "Severity": "Low",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "SSLV3_weak_ciphers": {
+        "Summary": "SSL 3.0 -  List of accepted cipher suites contains weak ciphers",
+        "Severity": "Low",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "TLSV1": {
+        "Summary": "TLS 1.0 -  List of accepted cipher suites contains weak ciphers",
+        "Severity": "Low",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "TLSV1_1": {
+        "Summary": "TLS 1.1 -  List of accepted cipher suites contains weak ciphers",
+        "Severity": "Low",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "TLSV1_2": {
+        "Summary": "TLS 1.2 -  List of accepted cipher suites contains weak ciphers",
+        "Severity": "Low",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    }
+}
+
+class SSLyzePlugin(ExternalProcessPlugin):
+    PLUGIN_NAME = "SSlyze"
+    PLUGIN_VERSION = "0.1"
+    PLUGIN_WEIGHT = "light"
+
+    def parse_sslyze_output(self, output):
+
+        try:
+            tree = ET.parse(output)
+        except:
+            raise Exception("The xml output can't be found or opened")
+
+        root = tree.getroot()
+
+        issues = []
+
+        # Session Renegotiation
+        session_renegotiation = root.find(".//sessionRenegotiation")
+        if session_renegotiation is not None:
+            if session_renegotiation.get("canBeClientInitiated") != "False":
+                issues.append(SSLYZE_ISSUES["Client-initiated Renegotiations"])
+
+            if session_renegotiation.get("isSecure") != "True":
+                issues.append(SSLYZE_ISSUES["Secure Renegotiation"])
+
+        # Compression - TODO
+        compression = root.find(".//compression")
+
+        # Heartbleed
+        heartbleed = root.find(".//heartbleed/heartbleed")
+        if heartbleed is not None and heartbleed.get("isVulnerable") != "False":
+            issues.append(SSLYZE_ISSUES["Heartbleed"])
+
+        # Session Resumption
+        session_resumption_with_session_ids = root.find(".//sessionResumptionWithSessionIDs")
+        session_resumption_with_tls_tickets = root.find(".//sessionResumptionWithTLSTickets")
+
+        if session_resumption_with_session_ids is not None:
+            if session_resumption_with_session_ids.get("isSupported") != "True":
+                issues.append(SSLYZE_ISSUES["Session ressumption with session IDs"])
+
+        if session_resumption_with_tls_tickets is not None:
+            if session_resumption_with_tls_tickets.get("isSupported") != "True":
+                issues.append(SSLYZE_ISSUES["Session ressumption with TLS session tickets"])
+
+        # Certificate - Content
+        public_key_size = root.find(".//publicKeySize")
+        if public_key_size is not None:
+            key_size = int(public_key_size.text.split(" ")[0])
+            if key_size < 2048:
+                issues.append(SSLYZE_ISSUES["Public key size"])
+
+        not_after = root.find(".//validity/notAfter")
+        if not_after is not None:
+            date = not_after.text
+            datetime = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
+            if datetime < time.time():
+                issues.append(SSLYZE_ISSUES["Validity date"])
+
+        # Certificate - Trust:
+        hostname_validation = root.find(".//hostnameValidation")
+
+        if hostname_validation is not None:
+            if hostname_validation.get("certificateMatchesServerHostname") != "True":
+                issues.append(SSLYZE_ISSUES["Hostname validation"])
+
+        path_validations = root.findall(".//pathValidation")
+
+        if path_validations:
+            for path_validation in path_validations:
+                if path_validation.get("validationResult") != "ok":
+                    issues.append(SSLYZE_ISSUES["Certificate validation"])
+
+        # SSLV2 Cipher Suites
+        sslv2 = root.find(".//sslv2")
+        if sslv2 is not None:
+            accepted = sslv2.find("acceptedCipherSuites")
+            preferred = sslv2.find("preferredCipherSuite")
+
+            if accepted is not None and preferred is not None:
+                if list(accepted) or list(preferred):
+                    issues.append(SSLYZE_ISSUES["SSLV2"])
+
+        # SSLV3 Cipher Suites
+        sslv3 = root.find(".//sslv3")
+        if sslv3 is not None:
+            accepted = sslv3.find("acceptedCipherSuites")
+            preferred = sslv3.find("preferredCipherSuite")
+
+            if accepted is not None and preferred is not None:
+                if list(accepted) or list(preferred):
+                    issues.append(SSLYZE_ISSUES["SSLV3_notempty"])
+
+        # TLSV1 Cipher Suites
+        tlsv1 = root.find(".//tslv1")
+        if tlsv1 is not None:
+            accepted = sslv3.find("acceptedCipherSuites")
+            preferred = sslv3.find("preferredCipherSuite")
+
+        # TLSV1.1 Cipher Suites
+        tslv1_1 = root.find(".//tslv1_1")
+        if tslv1_1 is not None:
+            accepted = sslv3.find("acceptedCipherSuites")
+            preferred = sslv3.find("preferredCipherSuite")
+
+        # TLSV1.2 Cipher Suites
+        tslv1_2 = root.find(".//tslv1_2")
+        if tslv1_2 is not None:
+            accepted = sslv3.find("acceptedCipherSuites")
+            preferred = sslv3.find("preferredCipherSuite")
+
+        return issues
+
+
+    def _check_options(self):
+        args = []
+        # General
+        if "timeout" in self.configuration:
+            args += ["--timeout", str(self.configuration["timeout"])]
+        if "nb_retries" in self.configuration:
+            args += ["--nb_retries", str(self.configuration["nb_retries"])]
+        if "https_tunnel" in self.configuration:
+            args += ["--https_tunnel", self.configuration["https_tunnel"]]
+        if "starttls" in self.configuration:
+            args += ["--starttls", self.configuration["starttls"]]
+        if "xmpp_to" in self.configuration:
+            args += ["--xmpp_to", self.configuration["xmlpp_to"]]
+        if "sni" in self.configuration:
+            args += ["--sni", self.configuration["sni"]]
+        if "regular" in self.configuration:
+            args += ["--regular"]
+
+        # Client certificate support
+        if "cert" in self.configuration:
+            args += ["--cert", self.configuration["cert"]]
+        if "certform" in self.configuration:
+            args += ["--certform", self.configuration["certform"]]
+        if "key" in self.configuration:
+            args += ["--key", self.configuration["key"]]
+        if "keyform" in self.configuration:
+            args += ["--keyform", self.configuration["keyform"]]
+        if "pass" in self.configuration:
+            args += ["--pass", self.configuration["pass"]]
+
+        # PluginCertInfo
+        if "certinfo" in self.configuration:
+            args += ["--certinfo", self.configuration["certinfo"]]
+
+        # PluginHeartbleed
+        if "heartbleed" in self.configuration:
+            args += ["--heartbleed"]
+
+        # PluginSessionResumption
+        if "resum" in self.configuration:
+            args += ["--resum"]
+        if "resum_rate" in self.configuration:
+            args += ["--resum_rate"]
+
+        # PluginOpenSSLCipherSuite
+        if "sslv2" in self.configuration:
+            args += ["--sslv2"]
+        if "sslv3" in self.configuration:
+            args += ["--sslv3"]
+        if "tslv1" in self.configuration:
+            args += ["--tslv1"]
+        if "tslv1_1" in self.configuration:
+            args += ["--tslv1_1"]
+        if "tslv1_2" in self.configuration:
+            args += ["--tlsv1_2"]
+        if "http_get" in self.configuration:
+            args += ["--http_get"]
+        if "hide_rejected_ciphers" in self.configuration:
+            args += ["--hide_rejected_ciphers"]
+
+        # PluginCompression
+        if "compression" in self.configuration:
+            args += ["--compression"]
+
+        # PluginSessionRenegotation
+        if "reneg" in self.configuration:
+            args += ["--reneg"]
+
+        # PluginHSTS
+        if "hsts" in self.configuration:
+            args += ["--hsts"]
+
+        return args
+
+    def do_start(self):
+
+
+        sslyze_path = self.configuration["sslyze_path"]
+
+        if not sslyze_path:
+            raise Exception("Missing sslyze_path in the plan")
+        if not os.path.isfile(sslyze_path):
+            raise Exception("Cannot find sslyze with the given path")
+
+        self.sslyze_stdout = ""
+        self.sslyze_stderr = ""
+
+        url = urlparse(self.configuration['target'])
+        target = url.hostname
+        self.report_progress(10, target)
+
+        args = self._check_options()
+        args += ["--xml_out", os.path.dirname(os.path.realpath(__file__)) + "/output_xml_sslyze.xml"]
+        args += [target]
+
+        self.spawn(sslyze_path, args)
+
+    def do_process_stdout(self, data):
+        self.sslyze_stdout += data
+
+    def do_process_stderr(self, data):
+        self.sslyze_stderr += data
+
+    def do_process_ended(self, status):
+        if self.stopping and status == 9:
+            self.report_finish("STOPPED")
+        elif status == 0:
+            issues = self.parse_sslyze_output(os.path.dirname(os.path.realpath(__file__)) + "/output_xml_sslyze.xml")
+            self.report_issues(issues)
+
+            self.report_finish()
+        else:
+            self.report_finish("FAILED")
+
