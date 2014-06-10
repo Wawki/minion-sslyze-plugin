@@ -5,7 +5,7 @@ Minion SSLyze Plugin
 
 This project contains the code for the Minion SSLyze Plugin. It provides a plugin to Minion that executes the SSLyze tool.
 
-Inspired by the NMAP plugin
+Inspired from the NMAP plugin (https://github.com/mozilla/minion-nmap-plugin)
 
 Installation
 ------------
