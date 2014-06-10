@@ -9,7 +9,6 @@ import xml.etree.cElementTree as ET
 from urlparse import urlparse
 from minion.plugins.base import ExternalProcessPlugin
 
-# TODO : Add evidences
 SSLYZE_ISSUES = {
     "Client-initiated Renegotiations": {
         "Summary": "Client-initiated Renegotiations - Honored",
@@ -95,7 +94,7 @@ SSLYZE_ISSUES = {
     "SSLV2": {
         "Summary": "SSL 2.0 - List of accepted cipher suites not empty",
         "Severity": "High",
-        "Description"
+        "Description": "The SSL 2.0 OpenSSL cipher suites supported by the server is not empty",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -104,6 +103,7 @@ SSLYZE_ISSUES = {
     "SSLV3_notempty": {
         "Summary": "SSL 3.0 -  List of accepted cipher suites not empty",
         "Severity": "Low",
+        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server is not empty",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -112,6 +112,8 @@ SSLYZE_ISSUES = {
     "SSLV3_exp_ciphers": {
         "Summary": "SSL 3.0 -  List of accepted cipher suites contains export encryption algorithms",
         "Severity": "High",
+        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
+                       "export encryption algorithms which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -120,6 +122,8 @@ SSLYZE_ISSUES = {
     "SSLV3_adh_ciphers": {
         "Summary": "SSL 3.0 -  List of accepted cipher suites contains anonymous DH cipher suites",
         "Severity": "High",
+        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
+                       "anonymous DH cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -128,6 +132,8 @@ SSLYZE_ISSUES = {
     "SSLV3_null_ciphers": {
         "Summary": "SSL 3.0 -  List of accepted cipher suites contains \"NULL\" ciphers",
         "Severity": "High",
+        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
+                       "\"NULL\" ciphers which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -136,6 +142,8 @@ SSLYZE_ISSUES = {
     "SSLV3_low_ciphers": {
         "Summary": "SSL 3.0 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
         "Severity": "High",
+        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
+                       "\"low\" encryption cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -144,6 +152,8 @@ SSLYZE_ISSUES = {
     "TLSV1_exp_ciphers": {
         "Summary": "TLS 1.0 -  List of accepted cipher suites contains export encryption algorithms",
         "Severity": "High",
+        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
+                       "export encryption algorithms which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -152,6 +162,8 @@ SSLYZE_ISSUES = {
     "TLSV1_adh_ciphers": {
         "Summary": "TLS 1.0 -  List of accepted cipher suites contains anonymous DH cipher suites",
         "Severity": "High",
+        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
+                       "anonymous DH cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -160,6 +172,8 @@ SSLYZE_ISSUES = {
     "TLSV1_null_ciphers": {
         "Summary": "TLS 1.0 -  List of accepted cipher suites contains \"NULL\" ciphers",
         "Severity": "High",
+        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
+                       "\"NULL\" ciphers which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -168,6 +182,8 @@ SSLYZE_ISSUES = {
     "TLSV1_low_ciphers": {
         "Summary": "TLS 1.0 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
         "Severity": "High",
+        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
+                       "\"low\" encryption cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -176,6 +192,8 @@ SSLYZE_ISSUES = {
     "TLSV1_1_exp_ciphers": {
         "Summary": "TLS 1.1 -  List of accepted cipher suites contains export encryption algorithms",
         "Severity": "High",
+        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
+                       "export encryption algorithms which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -184,6 +202,8 @@ SSLYZE_ISSUES = {
     "TLSV1_1_adh_ciphers": {
         "Summary": "TLS 1.1 -  List of accepted cipher suites contains anonymous DH cipher suites",
         "Severity": "High",
+        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
+                       "anonymous DH cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -192,6 +212,8 @@ SSLYZE_ISSUES = {
     "TLSV1_1_null_ciphers": {
         "Summary": "TLS 1.1 -  List of accepted cipher suites contains \"NULL\" ciphers",
         "Severity": "High",
+        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
+                       "\"NULL\" ciphers which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -200,6 +222,8 @@ SSLYZE_ISSUES = {
     "TLSV1_1_low_ciphers": {
         "Summary": "TLS 1.1 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
         "Severity": "High",
+        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
+                       "\"low\" encryption cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -208,6 +232,8 @@ SSLYZE_ISSUES = {
     "TLSV1_2_exp_ciphers": {
         "Summary": "TLS 1.2 -  List of accepted cipher suites contains export encryption algorithms",
         "Severity": "High",
+        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
+                       "export encryption algorithms which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -216,6 +242,8 @@ SSLYZE_ISSUES = {
     "TLSV1_2_adh_ciphers": {
         "Summary": "TLS 1.2 -  List of accepted cipher suites contains anonymous DH cipher suites",
         "Severity": "High",
+        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
+                       "anonymous DH cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -224,6 +252,8 @@ SSLYZE_ISSUES = {
     "TLSV1_2_null_ciphers": {
         "Summary": "TLS 1.2 -  List of accepted cipher suites contains \"NULL\" ciphers",
         "Severity": "High",
+        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
+                       "\"NULL\" ciphers which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -232,6 +262,8 @@ SSLYZE_ISSUES = {
     "TLSV1_2_low_ciphers": {
         "Summary": "TLS 1.2 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
         "Severity": "High",
+        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
+                       "\"low\" encryption cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -249,41 +281,73 @@ class SSLyzePlugin(ExternalProcessPlugin):
         issues = []
         accepted = root.find("acceptedCipherSuites")
         preferred = root.find("preferredCipherSuite")
-        exp_cipher_suite = False
-        adh_cipher_suite = False
-        null_cipher_suite = False
-        low_cipher_suite = False
+        exp_cipher_suite = ""
+        adh_cipher_suite = ""
+        null_cipher_suite = ""
+        low_cipher_suite = ""
 
         for cipher in accepted.iter('cipherSuite'):
             cipher_name = cipher.get("name")
             if cipher_name in self.export_cipher_suites:
-                exp_cipher_suite = True
+                if not exp_cipher_suite:
+                    exp_cipher_suite += cipher_name
+                else:
+                    exp_cipher_suite += ", " + cipher_name
             elif cipher_name in self.anonymous_dh_cipher_suites:
-                adh_cipher_suite = True
+                if not adh_cipher_suite:
+                    adh_cipher_suite += cipher_name
+                else:
+                    adh_cipher_suite += ", " + cipher_name
             elif cipher_name in self.null_cipher_suites:
-                null_cipher_suite = True
+                if not null_cipher_suite:
+                    null_cipher_suite += cipher_name
+                else:
+                    null_cipher_suite += ", " + cipher_name
             elif cipher_name in self.low_ciphers_suites:
-                low_cipher_suite = True
+                if not low_cipher_suite:
+                    low_cipher_suite += cipher_name
+                else:
+                    low_cipher_suite += ", " + cipher_name
 
         for cipher in preferred.iter('cipherSuite'):
             cipher_name = cipher.get("name")
             if cipher_name in self.export_cipher_suites:
-                exp_cipher_suite = True
+                if not exp_cipher_suite:
+                    exp_cipher_suite += cipher_name
+                else:
+                    exp_cipher_suite += ", " + cipher_name
             elif cipher_name in self.anonymous_dh_cipher_suites:
-                adh_cipher_suite = True
+                if not adh_cipher_suite:
+                    adh_cipher_suite += cipher_name
+                else:
+                    adh_cipher_suite += ", " + cipher_name
             elif cipher_name in self.null_cipher_suites:
-                null_cipher_suite = True
+                if not null_cipher_suite:
+                    null_cipher_suite += cipher_name
+                else:
+                    null_cipher_suite += ", " + cipher_name
             elif cipher_name in self.low_ciphers_suites:
-                low_cipher_suite = True
+                if not low_cipher_suite:
+                    low_cipher_suite += cipher_name
+                else:
+                    low_cipher_suite += ", " + cipher_name
 
         if exp_cipher_suite:
-            issues.append(SSLYZE_ISSUES[version + "_exp_ciphers"])
+            issue = SSLYZE_ISSUES[version + "_exp_ciphers"]
+            issue["Description"] += "\n\nExport encryption algorithms found " + exp_cipher_suite
+            issues.append(issue)
         if adh_cipher_suite:
-            issues.append(SSLYZE_ISSUES[version + "_adh_ciphers"])
+            issue = SSLYZE_ISSUES[version + "_adh_ciphers"]
+            issue["Description"] += "\n\nAnonymous DH cipher suites found " + adh_cipher_suite
+            issues.append(issue)
         if null_cipher_suite:
-            issues.append(SSLYZE_ISSUES[version + "_null_ciphers"])
+            issue = SSLYZE_ISSUES[version + "_null_ciphers"]
+            issue["Description"] += "\n\n\"NULL\" ciphers found " + null_cipher_suite
+            issues.append(issue)
         if low_cipher_suite:
-            issues.append(SSLYZE_ISSUES[version + "_low_ciphers"])
+            issue = SSLYZE_ISSUES[version + "_low_ciphers"]
+            issue["Description"] += "\"low\" encryption cipher suites found " + low_cipher_suite
+            issues.append(issue)
 
         return issues
 
@@ -335,13 +399,17 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if public_key_size is not None:
             key_size = int(public_key_size.text.split(" ")[0])
             if key_size < 2048:
-                issues.append(SSLYZE_ISSUES["Public key size"])
+                issue = SSLYZE_ISSUES["Public key size"]
+                issue["Definition"] += "\n\nActually, the public key size found is " + key_size
+                issues.append(issue)
 
         not_after = root.find(".//validity/notAfter")
         if not_after is not None:
             date = not_after.text
             datetime = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
             if datetime < time.time():
+                issue = SSLYZE_ISSUES["Public key size"]
+                issue["Definition"] += "\n\nActually, the validity date found is " + date
                 issues.append(SSLYZE_ISSUES["Validity date"])
 
         # Certificate - Trust:
@@ -354,9 +422,18 @@ class SSLyzePlugin(ExternalProcessPlugin):
         path_validations = root.findall(".//pathValidation")
 
         if path_validations:
+            bad_cert_validation = ""
             for path_validation in path_validations:
                 if path_validation.get("validationResult") != "ok":
-                    issues.append(SSLYZE_ISSUES["Certificate validation"])
+                    if not bad_cert_validation:
+                        bad_cert_validation += path_validation.get("usingTrustStore")
+                    else:
+                        bad_cert_validation += ", " + path_validation.get("usingTrustStore")
+
+            if bad_cert_validation:
+                issue = SSLYZE_ISSUES["Certificate validation"]
+                issue["Description"] += "\n\nBad certificate validation for the following store(s) : " + bad_cert_validation
+                issues.append(issue)
 
         # SSLV2 Cipher Suites
         sslv2 = root.find(".//sslv2")
@@ -366,7 +443,13 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
             if accepted is not None and preferred is not None:
                 if list(accepted) or list(preferred):
-                    issues.append(SSLYZE_ISSUES["SSLV2"])
+
+                    preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
+                    accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
+
+                    issue = SSLYZE_ISSUES["SSLV2"]
+                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + ", ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
+                    issues.append(issue)
 
         # SSLV3 Cipher Suites
         sslv3 = root.find(".//sslv3")
@@ -376,7 +459,13 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
             if accepted is not None and preferred is not None:
                 if list(accepted) or list(preferred):
-                    issues.append(SSLYZE_ISSUES["SSLV3_notempty"])
+
+                    preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
+                    accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
+
+                    issue = SSLYZE_ISSUES["SSLV3_notempty"]
+                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + ", ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
+                    issues.append(issue)
 
             issues.extend(self._find_weak_ciphers(sslv3, "SSLV3"))
 
@@ -487,7 +576,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if "null_cipher_suites" in self.configuration:
             self.null_cipher_suites = self.configuration["null_cipher_suites"].split(':')
         if "low_cipher_suites" in self.configuration:
-            self.low_ciphers_suites = self.configuration["list_weak_ciphers"].split(':')
+            self.low_ciphers_suites = self.configuration["low_cipher_suites"].split(':')
 
     def do_start(self):
 
