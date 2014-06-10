@@ -1,6 +1,11 @@
+Minion SSLyze Plugin
+====================
+
 [![Build Status](https://drone.io/github.com/Wawki/minion-sslyze-plugin/status.png)](https://drone.io/github.com/Wawki/minion-sslyze-plugin/latest)
 
 This project contains the code for the Minion SSLyze Plugin. It provides a plugin to Minion that executes the SSLyze tool.
+
+Inspired by the NMAP plugin
 
 Installation
 ------------
