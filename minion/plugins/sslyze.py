@@ -6,6 +6,7 @@
 import time
 import os
 import xml.etree.cElementTree as ET
+import datetime
 from urlparse import urlparse
 from minion.plugins.base import ExternalProcessPlugin
 
@@ -54,6 +55,7 @@ SSLYZE_ISSUES = {
     "Session ressumption with TLS session tickets": {
         "Summary": "Session ressumption with TLS session tickets - Not supported",
         "Severity": "Info",
+        "Description": "Test the server for session ressumption support using TLS session tickets"
     },
     "Public key size": {
         "Summary": "Public key size lower than 2048 bits",
@@ -276,6 +278,8 @@ class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_NAME = "SSlyze"
     PLUGIN_VERSION = "0.1"
     PLUGIN_WEIGHT = "light"
+
+    SSLyze_NAME = "sslyze.py"
 
     def _find_weak_ciphers(self, root, version):
         issues = []
@@ -580,22 +584,27 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
     def do_start(self):
 
+        # Try to find sslyze with the given configuration
+        if "sslyze_path" in self.configuration:
+            sslyze_path = self.configuration["sslyze_path"]
 
-        sslyze_path = self.configuration["sslyze_path"]
+            if not os.path.isfile(sslyze_path):
+                raise Exception("Cannot find SSlyze with the given path")
 
-        if not sslyze_path:
-            raise Exception("Missing sslyze_path in the plan")
-        if not os.path.isfile(sslyze_path):
-            raise Exception("Cannot find sslyze with the given path")
+        # Else try to find sslyze in the path
+        sslyze_path = self.locate_program(self.SSLyze_NAME)
+        if sslyze_path is None:
+            raise Exception("Cannot find SSLyze in path")
 
         self.sslyze_stdout = ""
         self.sslyze_stderr = ""
 
         url = urlparse(self.configuration['target'])
         target = url.hostname
+        xml_output = "/output_sslyze_" + target + "_" + datetime.datetime.now().strftime("%Y%m%d_%H:%M:%S")
 
         args = self._check_options()
-        args += ["--xml_out", os.path.dirname(os.path.realpath(__file__)) + "/output_xml_sslyze.xml"]
+        args += ["--xml_out", os.path.dirname(os.path.realpath(__file__)) + "xml_output"]
         args += [target]
 
         self.spawn(sslyze_path, args)
