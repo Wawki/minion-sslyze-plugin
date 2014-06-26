@@ -489,6 +489,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if tslv1_2 is not None:
             issues.extend(self._find_weak_ciphers(tslv1_2, "TLSV1_2"))
 
+        # For each issue add the hostname scanned in the URL field:
+        for issue in issues:
+            issue["URLs"] = [{"URL": self.target}]
+
         return issues
 
 
@@ -600,12 +604,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
         self.sslyze_stderr = ""
 
         url = urlparse(self.configuration['target'])
-        target = url.hostname
-        xml_output = "/output_sslyze_" + target + "_" + datetime.datetime.now().strftime("%Y%m%d_%H:%M:%S")
+        self.target = url.hostname
+        xml_output = "/output_sslyze_" + self.target + "_" + datetime.datetime.now().strftime("%Y%m%d_%H:%M:%S")
 
         args = self._check_options()
         args += ["--xml_out", os.path.dirname(os.path.realpath(__file__)) + "xml_output"]
-        args += [target]
+        args += [self.target]
 
         self.spawn(sslyze_path, args)
 
