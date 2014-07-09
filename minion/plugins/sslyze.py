@@ -7,6 +7,7 @@ import time
 import os
 import xml.etree.cElementTree as ET
 import datetime
+import uuid
 from urlparse import urlparse
 from minion.plugins.base import ExternalProcessPlugin
 
@@ -226,6 +227,15 @@ SSLYZE_ISSUES = {
         "Severity": "High",
         "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
                        "\"low\" encryption cipher suites which are not secure",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "TLSV1_2_not_supported": {
+        "Summary": "TLS 1.2 - Not supported",
+        "Severity": "Low",
+        "Description": "TLS 1.2 is not supported by this server",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -478,7 +488,6 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if tlsv1 is not None:
             issues.extend(self._find_weak_ciphers(tlsv1, "TLSV1"))
 
-
         # TLSV1.1 Cipher Suites
         tslv1_1 = root.find(".//tslv1_1")
         if tslv1_1 is not None:
@@ -488,6 +497,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
         tslv1_2 = root.find(".//tslv1_2")
         if tslv1_2 is not None:
             issues.extend(self._find_weak_ciphers(tslv1_2, "TLSV1_2"))
+
+            accepted = root.find("acceptedCipherSuites")
+            preferred = root.find("preferredCipherSuite")
+
+            if not accepted and not preferred:
+                issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
 
         # For each issue add the hostname scanned in the URL field:
         for issue in issues:
@@ -605,10 +620,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         url = urlparse(self.configuration['target'])
         self.target = url.hostname
-        xml_output = "/output_sslyze_" + self.target + "_" + datetime.datetime.now().strftime("%Y%m%d_%H:%M:%S")
+        self.output_id = str(uuid.uuid4())
+        self.xml_output = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "XMLOUTPUT_" + self.output_id + ".xml"
 
         args = self._check_options()
-        args += ["--xml_out", os.path.dirname(os.path.realpath(__file__)) + "xml_output"]
+        args += ["--xml_out", self.xml_output]
         args += [self.target]
 
         self.spawn(sslyze_path, args)
@@ -617,14 +633,27 @@ class SSLyzePlugin(ExternalProcessPlugin):
         self.sslyze_stdout += data
 
     def do_process_stderr(self, data):
+        self.report_progress(11, str(data))
         self.sslyze_stderr += data
 
     def do_process_ended(self, status):
         if self.stopping and status == 9:
             self.report_finish("STOPPED")
         elif status == 0:
-            issues = self.parse_sslyze_output(os.path.dirname(os.path.realpath(__file__)) + "/output_xml_sslyze.xml")
+            issues = self.parse_sslyze_output(self.xml_output)
             self.report_issues(issues)
+
+            stdout_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDOUT_" + self.output_id + ".txt"
+            stderr_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDERR_" + self.output_id + ".txt"
+
+            with open(stdout_log, 'w+') as f:
+                f.write(self.sslyze_stdout)
+            with open(stderr_log, 'w+') as f:
+                f.write(self.sslyze_stderr)
+
+            self.report_artifacts("SSLyze Output", [{"type": "txt", "path": stdout_log},
+                                                    {"type": "txt", "path": stderr_log}])
+            self.report_artifacts("SSLyze XML Report", [{"type": "xml", "path": self.xml_output}])
 
             self.report_finish()
         else:
