@@ -8,6 +8,7 @@ import os
 import xml.etree.cElementTree as ET
 import datetime
 import uuid
+import socket
 from urlparse import urlparse
 from minion.plugins.base import ExternalProcessPlugin
 
@@ -633,7 +634,6 @@ class SSLyzePlugin(ExternalProcessPlugin):
         self.sslyze_stdout += data
 
     def do_process_stderr(self, data):
-        self.report_progress(11, str(data))
         self.sslyze_stderr += data
 
     def do_process_ended(self, status):
@@ -651,11 +651,15 @@ class SSLyzePlugin(ExternalProcessPlugin):
             with open(stderr_log, 'w+') as f:
                 f.write(self.sslyze_stderr)
 
-            self.report_artifacts("SSLyze Output", [{"type": "txt", "path": stdout_log},
-                                                    {"type": "txt", "path": stderr_log}])
-            self.report_artifacts("SSLyze XML Report", [{"type": "xml", "path": self.xml_output}])
+            self.report_artifacts("SSLyze Output", [stdout_log, stderr_log])
+            self.report_artifacts("SSLyze XML Report", [self.xml_output])
 
             self.report_finish()
         else:
-            self.report_finish("FAILED")
+            failure = {
+                "hostname": socket.gethostname(),
+                "exception": self.sslyze_stderr,
+                "message": "Plugin failed"
+            }
+            self.report_finish("FAILED", failure)
 
