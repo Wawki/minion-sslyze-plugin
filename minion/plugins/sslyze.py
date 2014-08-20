@@ -643,19 +643,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
             issues = self.parse_sslyze_output(self.xml_output)
             self.report_issues(issues)
 
-            stdout_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDOUT_" + self.output_id + ".txt"
-            stderr_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDERR_" + self.output_id + ".txt"
-
-            with open(stdout_log, 'w+') as f:
-                f.write(self.sslyze_stdout)
-            with open(stderr_log, 'w+') as f:
-                f.write(self.sslyze_stderr)
-
-            self.report_artifacts("SSLyze Output", [stdout_log, stderr_log])
-            self.report_artifacts("SSLyze XML Report", [self.xml_output])
+            self._save_artifacts()
 
             self.report_finish()
         else:
+            self._save_artifacts()
             failure = {
                 "hostname": socket.gethostname(),
                 "exception": self.sslyze_stderr,
@@ -663,3 +655,14 @@ class SSLyzePlugin(ExternalProcessPlugin):
             }
             self.report_finish("FAILED", failure)
 
+    def _save_artifacts(self):
+        stdout_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDOUT_" + self.output_id + ".txt"
+        stderr_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDERR_" + self.output_id + ".txt"
+
+        with open(stdout_log, 'w+') as f:
+            f.write(self.sslyze_stdout)
+        with open(stderr_log, 'w+') as f:
+            f.write(self.sslyze_stderr)
+
+        self.report_artifacts("SSLyze Output", [stdout_log, stderr_log])
+        self.report_artifacts("SSLyze XML Report", [self.xml_output])
