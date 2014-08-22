@@ -658,11 +658,18 @@ class SSLyzePlugin(ExternalProcessPlugin):
     def _save_artifacts(self):
         stdout_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDOUT_" + self.output_id + ".txt"
         stderr_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDERR_" + self.output_id + ".txt"
+        output_artifacts = []
 
-        with open(stdout_log, 'w+') as f:
-            f.write(self.sslyze_stdout)
-        with open(stderr_log, 'w+') as f:
-            f.write(self.sslyze_stderr)
+        if self.sslyze_stdout:
+            with open(stdout_log, 'w+') as f:
+                f.write(self.sslyze_stdout)
+            output_artifacts.append(stdout_log)
+        if self.sslyze_stderr:
+            with open(stderr_log, 'w+') as f:
+                f.write(self.sslyze_stderr)
+            output_artifacts.append(stderr_log)
 
-        self.report_artifacts("SSLyze Output", [stdout_log, stderr_log])
-        self.report_artifacts("SSLyze XML Report", [self.xml_output])
+        if output_artifacts:
+            self.report_artifacts("SSLyze Output", output_artifacts)
+        if os.path.isfile(self.xml_output):
+            self.report_artifacts("SSLyze XML Report", [self.xml_output])
