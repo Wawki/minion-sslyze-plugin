@@ -616,13 +616,18 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if sslyze_path is None:
             raise Exception("Cannot find SSLyze in path")
 
+        if 'report_dir' in self.configuration:
+            self.report_dir = self.configuration['report_dir']
+        else:
+            self.report_dir = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/"
+
         self.sslyze_stdout = ""
         self.sslyze_stderr = ""
 
         url = urlparse(self.configuration['target'])
         self.target = url.hostname
         self.output_id = str(uuid.uuid4())
-        self.xml_output = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "XMLOUTPUT_" + self.output_id + ".xml"
+        self.xml_output = self.report_dir + "XMLOUTPUT_" + self.output_id + ".xml"
 
         args = self._check_options()
         args += ["--xml_out", self.xml_output]
@@ -656,8 +661,8 @@ class SSLyzePlugin(ExternalProcessPlugin):
             self.report_finish("FAILED", failure)
 
     def _save_artifacts(self):
-        stdout_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDOUT_" + self.output_id + ".txt"
-        stderr_log = os.path.dirname(os.path.realpath(__file__)) + "/artifacts/" + "STDERR_" + self.output_id + ".txt"
+        stdout_log = self.report_dir + "STDOUT_" + self.output_id + ".txt"
+        stderr_log = self.report_dir + "STDERR_" + self.output_id + ".txt"
         output_artifacts = []
 
         if self.sslyze_stdout:
