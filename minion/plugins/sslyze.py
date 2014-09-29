@@ -612,9 +612,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 raise Exception("Cannot find SSlyze with the given path")
 
         # Else try to find sslyze in the path
-        sslyze_path = self.locate_program(self.SSLyze_NAME)
-        if sslyze_path is None:
-            raise Exception("Cannot find SSLyze in path")
+        else:
+            sslyze_path = self.locate_program(self.SSLyze_NAME)
+            if sslyze_path is None:
+                raise Exception("Cannot find SSLyze in path")
 
         if 'report_dir' in self.configuration:
             self.report_dir = self.configuration['report_dir']
