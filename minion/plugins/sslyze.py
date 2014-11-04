@@ -378,6 +378,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         issues = []
 
+        # Timeout or connection rejected ( invalid target )
+        invalid_target = root.find(".//invalidTarget")
+        if invalid_target is not None:
+            self.sslyze_stderr = invalid_target.get("error")
+
         # Session Renegotiation
         session_renegotiation = root.find(".//sessionRenegotiation")
         if session_renegotiation is not None:
@@ -651,7 +656,15 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
             self._save_artifacts()
 
-            self.report_finish()
+            if self.sslyze_stderr:
+                failure = {
+                    "hostname": socket.gethostname(),
+                    "exception": self.sslyze_stderr,
+                    "message": "Plugin failed"
+                }
+                self.report_finish("FAILED", failure)
+            else:
+                self.report_finish()
         else:
             self._save_artifacts()
             failure = {
