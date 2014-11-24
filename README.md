@@ -14,7 +14,7 @@ It assumes that you have already Minion installed (https://github.com/mozilla/mi
 
 First install the SSLyze tool :
 
-- Download at https://github.com/iSECPartners/sslyze/releases
+- Download at https://github.com/nabla-c0d3/sslyze/releases
 - Install it by running :
     ```sudo python setup.py install```
 
