@@ -106,7 +106,7 @@ SSLYZE_ISSUES = {
     },
     "SSLV3_notempty": {
         "Summary": "SSL 3.0 -  List of accepted cipher suites not empty",
-        "Severity": "Low",
+        "Severity": "High",
         "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server is not empty",
         "Classification": {
             "cwe_id": "327",
@@ -235,7 +235,7 @@ SSLYZE_ISSUES = {
     },
     "TLSV1_2_not_supported": {
         "Summary": "TLS 1.2 - Not supported",
-        "Severity": "Low",
+        "Severity": "Medium",
         "Description": "TLS 1.2 is not supported by this server",
         "Classification": {
             "cwe_id": "327",
@@ -495,20 +495,22 @@ class SSLyzePlugin(ExternalProcessPlugin):
             issues.extend(self._find_weak_ciphers(tlsv1, "TLSV1"))
 
         # TLSV1.1 Cipher Suites
-        tslv1_1 = root.find(".//tslv1_1")
-        if tslv1_1 is not None:
-            issues.extend(self._find_weak_ciphers(tslv1_1, "TLSV1_1"))
+        tlsv1_1 = root.find(".//tlsv1_1")
+        if tlsv1_1 is not None:
+            issues.extend(self._find_weak_ciphers(tlsv1_1, "TLSV1_1"))
 
         # TLSV1.2 Cipher Suites
-        tslv1_2 = root.find(".//tslv1_2")
-        if tslv1_2 is not None:
-            issues.extend(self._find_weak_ciphers(tslv1_2, "TLSV1_2"))
+        tlsv1_2 = root.find(".//tlsv1_2")
+        if tlsv1_2 is not None:
+            issues.extend(self._find_weak_ciphers(tlsv1_2, "TLSV1_2"))
 
             accepted = root.find("acceptedCipherSuites")
             preferred = root.find("preferredCipherSuite")
 
             if not accepted and not preferred:
                 issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
+        else:
+            issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
 
         # For each issue add the hostname scanned in the URL field:
         for issue in issues:
@@ -566,11 +568,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
             args += ["--sslv2"]
         if "sslv3" in self.configuration:
             args += ["--sslv3"]
-        if "tslv1" in self.configuration:
-            args += ["--tslv1"]
-        if "tslv1_1" in self.configuration:
-            args += ["--tslv1_1"]
-        if "tslv1_2" in self.configuration:
+        if "tlsv1" in self.configuration:
+            args += ["--tlsv1"]
+        if "tlsv1_1" in self.configuration:
+            args += ["--tlsv1_1"]
+        if "tlsv1_2" in self.configuration:
             args += ["--tlsv1_2"]
         if "http_get" in self.configuration:
             args += ["--http_get"]
