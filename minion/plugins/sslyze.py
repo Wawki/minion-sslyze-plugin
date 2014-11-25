@@ -589,6 +589,15 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if "hsts" in self.configuration:
             args += ["--hsts"]
 
+        # Get additional parameters
+        params = []
+        if 'parameters' in self.configuration:
+            params = self.configuration.get('parameters')
+
+            ### Put parameters into array
+            params = params.split()
+            args += params
+
         return args
 
     def do_configure(self):
