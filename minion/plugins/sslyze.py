@@ -490,7 +490,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
             issues.extend(self._find_weak_ciphers(sslv3, "SSLV3"))
 
         # TLSV1 Cipher Suites
-        tlsv1 = root.find(".//tslv1")
+        tlsv1 = root.find(".//tlsv1")
         if tlsv1 is not None:
             issues.extend(self._find_weak_ciphers(tlsv1, "TLSV1"))
 
