@@ -643,6 +643,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         url = urlparse(self.configuration['target'])
         self.target = url.hostname
+
+        # Check if the target is an ip to avoid empty hostname
+        if not self.target:
+            self.target = url.path
+
         self.output_id = str(uuid.uuid4())
         self.xml_output = self.report_dir + "XMLOUTPUT_" + self.output_id + ".xml"
 
