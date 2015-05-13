@@ -64,8 +64,8 @@ SSLYZE_ISSUES = {
         "Severity": "Info",
         "Description": "HSTS is a web security policy mechanism which is necessary to protect secure HTTPS websites "
                        "against downgrade attacks, and which greatly simplifies protection against cookie hijacking. "
-                       "It allows web servers to declare that web browsers (or other complying user agents) should only "
-                       "interact with it using secure HTTPS connections, and never via the insecure HTTP protocol"
+                       "It allows web servers to declare that web browsers (or other complying user agents) should only"
+                       " interact with it using secure HTTPS connections, and never via the insecure HTTP protocol"
     },
     "Public key size": {
         "Summary": "Public key size lower than 2048 bits",
@@ -76,10 +76,19 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/320.html"
         }
     },
-    "Validity date": {
-        "Summary": "Validity date before current date",
+    "Expired Validity date": {
+        "Summary": "Certificate expired: Validity date before current date",
         "Severity": "High",
         "Description": "Verify that the validity date of the certificate is not before the current date",
+        "Classification": {
+            "cwe_id": "324",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/324.html"
+        }
+    },
+    "Before Validity date": {
+        "Summary": "Certificate not valid: Validity date starts after current date",
+        "Severity": "High",
+        "Description": "The validity of the certificate is after the current date",
         "Classification": {
             "cwe_id": "324",
             "cwe_url": "http://cwe.mitre.org/data/definitions/324.html"
@@ -436,21 +445,38 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 issue["Definition"] += "\n\nActually, the public key size found is " + key_size
                 issues.append(issue)
 
+        # Check if the certificate is expired
         not_after = root.find(".//validity/notAfter")
         if not_after is not None:
             date = not_after.text
-            datetime = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
-            if datetime < time.time():
-                issue = SSLYZE_ISSUES["Public key size"]
-                issue["Definition"] += "\n\nActually, the validity date found is " + date
-                issues.append(SSLYZE_ISSUES["Validity date"])
+            cert_date = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
+            if cert_date < time.gmtime():
+                issue = SSLYZE_ISSUES["Expired Validity date"]
+                issue["Description"] += "\n\nActually, the validity date found is " + date
+                issues.append(issue)
+
+        # Check if the certificate is before being valid
+        not_before = root.find(".//validity/notBefore")
+        if not_before is not None:
+            date = not_before.text
+            cert_date = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
+            if cert_date > time.gmtime():
+                issue = SSLYZE_ISSUES["Before Validity date"]
+                issue["Description"] += "\n\nActually, the validity date begins at " + date
+                issues.append(issue)
 
         # Certificate - Trust:
         hostname_validation = root.find(".//hostnameValidation")
 
         if hostname_validation is not None:
             if hostname_validation.get("certificateMatchesServerHostname") != "True":
-                issues.append(SSLYZE_ISSUES["Hostname validation"])
+                issue = SSLYZE_ISSUES["Hostname validation"]
+
+                # find the CommonName of the certificate
+                common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
+                issue["Description"] += "\n\nActually, the commonName for the certificate is " + common_name
+
+                issues.append(issue)
 
         path_validations = root.findall(".//pathValidation")
 
@@ -474,7 +500,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
             accepted = sslv2.find("acceptedCipherSuites")
             preferred = sslv2.find("preferredCipherSuite")
 
-            if accepted is not None and preferred is not None:
+            if accepted is not None or preferred is not None:
                 if list(accepted) or list(preferred):
 
                     preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
@@ -490,14 +516,15 @@ class SSLyzePlugin(ExternalProcessPlugin):
             accepted = sslv3.find("acceptedCipherSuites")
             preferred = sslv3.find("preferredCipherSuite")
 
-            if accepted is not None and preferred is not None:
+            if accepted is not None or preferred is not None:
                 if list(accepted) or list(preferred):
 
                     preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
                     accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
 
                     issue = SSLYZE_ISSUES["SSLV3_notempty"]
-                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + ", ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
+                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + \
+                                            ", ".join(preferred_ciphers) + "/ " + ", ".join(accepted_ciphers)
                     issues.append(issue)
 
             issues.extend(self._find_weak_ciphers(sslv3, "SSLV3"))
@@ -609,7 +636,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if 'parameters' in self.configuration:
             params = self.configuration.get('parameters')
 
-            ### Put parameters into array
+            # Put parameters into array
             params = params.split()
             args += params
 
