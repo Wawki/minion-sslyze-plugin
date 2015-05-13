@@ -59,6 +59,14 @@ SSLYZE_ISSUES = {
         "Severity": "Info",
         "Description": "Test the server for session ressumption support using TLS session tickets"
     },
+    "HSTS": {
+        "Summary": "No HTTP Strict Transport Security (HSTS) directive",
+        "Severity": "Info",
+        "Description": "HSTS is a web security policy mechanism which is necessary to protect secure HTTPS websites "
+                       "against downgrade attacks, and which greatly simplifies protection against cookie hijacking. "
+                       "It allows web servers to declare that web browsers (or other complying user agents) should only "
+                       "interact with it using secure HTTPS connections, and never via the insecure HTTP protocol"
+    },
     "Public key size": {
         "Summary": "Public key size lower than 2048 bits",
         "Severity": "High",
@@ -398,9 +406,14 @@ class SSLyzePlugin(ExternalProcessPlugin):
             issues.append(SSLYZE_ISSUES["Compression"])
 
         # Heartbleed
-        heartbleed = root.find(".//heartbleed/heartbleed")
+        heartbleed = root.find(".//heartbleed/openSslHeartbleed")
         if heartbleed is not None and heartbleed.get("isVulnerable") != "False":
             issues.append(SSLYZE_ISSUES["Heartbleed"])
+
+        # HSTS
+        hsts = root.find(".//hsts/httpStrictTransportSecurity")
+        if hsts is not None and hsts.get("isSupported") == "False":
+            issues.append(SSLYZE_ISSUES["HSTS"])
 
         # Session Resumption
         session_resumption_with_session_ids = root.find(".//sessionResumptionWithSessionIDs")
@@ -468,7 +481,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                     accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
 
                     issue = SSLYZE_ISSUES["SSLV2"]
-                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + ", ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
+                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + "/ ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
                     issues.append(issue)
 
         # SSLV3 Cipher Suites
