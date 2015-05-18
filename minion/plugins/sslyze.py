@@ -483,15 +483,17 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if path_validations:
             bad_cert_validation = ""
             for path_validation in path_validations:
-                if path_validation.get("validationResult") != "ok":
+                validation_result = path_validation.get("validationResult")
+                if validation_result != "ok":
                     if not bad_cert_validation:
-                        bad_cert_validation += path_validation.get("usingTrustStore")
+                        bad_cert_validation += path_validation.get("usingTrustStore") + " : " + validation_result
                     else:
-                        bad_cert_validation += ", " + path_validation.get("usingTrustStore")
+                        bad_cert_validation += "\n" + path_validation.get("usingTrustStore") + " : " + validation_result
 
             if bad_cert_validation:
                 issue = SSLYZE_ISSUES["Certificate validation"]
-                issue["Description"] += "\n\nBad certificate validation for the following store(s) : " + bad_cert_validation
+                issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
+                                        + bad_cert_validation
                 issues.append(issue)
 
         # SSLV2 Cipher Suites
@@ -541,17 +543,16 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # TLSV1.2 Cipher Suites
         tlsv1_2 = root.find(".//tlsv1_2")
-        if tlsv1_2 is not None:
+        if tlsv1_2 is not None and tlsv1_2.get("isProtocolSupported") == "True":
             issues.extend(self._find_weak_ciphers(tlsv1_2, "TLSV1_2"))
 
             accepted = root.find("acceptedCipherSuites")
             preferred = root.find("preferredCipherSuite")
 
-            if not accepted and not preferred:
-                issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
+            #if not accepted and not preferred:
+            #    issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
         else:
             issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
-
         # For each issue add the hostname scanned in the URL field:
         for issue in issues:
             issue["URLs"] = [{"URL": self.target}]
