@@ -15,7 +15,7 @@ from minion.plugins.base import ExternalProcessPlugin
 SSLYZE_ISSUES = {
     "Client-initiated Renegotiations": {
         "Summary": "Client-initiated Renegotiations - Honored",
-        "Severity": "High",
+        "Severity": "Medium",
         "Description": "Test the server for client-initiated renegotiation support",
         "Classification": {
             "cwe_id": "310",
@@ -24,7 +24,7 @@ SSLYZE_ISSUES = {
     },
     "Secure Renegotiation":  {
         "Summary": "Secure Renegotiation - Not supported",
-        "Severity": "High",
+        "Severity": "Medium",
         "Description": "Test the server for secure renegotiation support",
         "Classification": {
             "cwe_id": "310",
@@ -130,170 +130,10 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
         }
     },
-    "SSLV3_exp_ciphers": {
-        "Summary": "SSL 3.0 -  List of accepted cipher suites contains export encryption algorithms",
-        "Severity": "High",
-        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
-                       "export encryption algorithms which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "SSLV3_adh_ciphers": {
-        "Summary": "SSL 3.0 -  List of accepted cipher suites contains anonymous DH cipher suites",
-        "Severity": "High",
-        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
-                       "anonymous DH cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "SSLV3_null_ciphers": {
-        "Summary": "SSL 3.0 -  List of accepted cipher suites contains \"NULL\" ciphers",
-        "Severity": "High",
-        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
-                       "\"NULL\" ciphers which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "SSLV3_low_ciphers": {
-        "Summary": "SSL 3.0 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
-        "Severity": "High",
-        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server contains "
-                       "\"low\" encryption cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_exp_ciphers": {
-        "Summary": "TLS 1.0 -  List of accepted cipher suites contains export encryption algorithms",
-        "Severity": "High",
-        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
-                       "export encryption algorithms which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_adh_ciphers": {
-        "Summary": "TLS 1.0 -  List of accepted cipher suites contains anonymous DH cipher suites",
-        "Severity": "High",
-        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
-                       "anonymous DH cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_null_ciphers": {
-        "Summary": "TLS 1.0 -  List of accepted cipher suites contains \"NULL\" ciphers",
-        "Severity": "High",
-        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
-                       "\"NULL\" ciphers which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_low_ciphers": {
-        "Summary": "TLS 1.0 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
-        "Severity": "High",
-        "Description": "The TLS 1.0 OpenSSL cipher suites supported by the server contains "
-                       "\"low\" encryption cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_1_exp_ciphers": {
-        "Summary": "TLS 1.1 -  List of accepted cipher suites contains export encryption algorithms",
-        "Severity": "High",
-        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
-                       "export encryption algorithms which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_1_adh_ciphers": {
-        "Summary": "TLS 1.1 -  List of accepted cipher suites contains anonymous DH cipher suites",
-        "Severity": "High",
-        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
-                       "anonymous DH cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_1_null_ciphers": {
-        "Summary": "TLS 1.1 -  List of accepted cipher suites contains \"NULL\" ciphers",
-        "Severity": "High",
-        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
-                       "\"NULL\" ciphers which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_1_low_ciphers": {
-        "Summary": "TLS 1.1 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
-        "Severity": "High",
-        "Description": "The TLS 1.1 OpenSSL cipher suites supported by the server contains "
-                       "\"low\" encryption cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
     "TLSV1_2_not_supported": {
         "Summary": "TLS 1.2 - Not supported",
         "Severity": "Medium",
         "Description": "TLS 1.2 is not supported by this server",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_2_exp_ciphers": {
-        "Summary": "TLS 1.2 -  List of accepted cipher suites contains export encryption algorithms",
-        "Severity": "High",
-        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
-                       "export encryption algorithms which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_2_adh_ciphers": {
-        "Summary": "TLS 1.2 -  List of accepted cipher suites contains anonymous DH cipher suites",
-        "Severity": "High",
-        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
-                       "anonymous DH cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_2_null_ciphers": {
-        "Summary": "TLS 1.2 -  List of accepted cipher suites contains \"NULL\" ciphers",
-        "Severity": "High",
-        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
-                       "\"NULL\" ciphers which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
-    },
-    "TLSV1_2_low_ciphers": {
-        "Summary": "TLS 1.2 -  List of accepted cipher suites contains \"low\" encryption cipher suites",
-        "Severity": "High",
-        "Description": "The TLS 1.2 OpenSSL cipher suites supported by the server contains "
-                       "\"low\" encryption cipher suites which are not secure",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -328,80 +168,6 @@ class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_WEIGHT = "light"
 
     SSLyze_NAME = "sslyze.py"
-
-    def _find_weak_ciphers(self, root, version):
-        issues = []
-        accepted = root.find("acceptedCipherSuites")
-        preferred = root.find("preferredCipherSuite")
-        exp_cipher_suite = ""
-        adh_cipher_suite = ""
-        null_cipher_suite = ""
-        low_cipher_suite = ""
-
-        for cipher in accepted.iter('cipherSuite'):
-            cipher_name = cipher.get("name")
-            if cipher_name in self.export_cipher_suites:
-                if not exp_cipher_suite:
-                    exp_cipher_suite += cipher_name
-                else:
-                    exp_cipher_suite += ", " + cipher_name
-            elif cipher_name in self.anonymous_dh_cipher_suites:
-                if not adh_cipher_suite:
-                    adh_cipher_suite += cipher_name
-                else:
-                    adh_cipher_suite += ", " + cipher_name
-            elif cipher_name in self.null_cipher_suites:
-                if not null_cipher_suite:
-                    null_cipher_suite += cipher_name
-                else:
-                    null_cipher_suite += ", " + cipher_name
-            elif cipher_name in self.low_ciphers_suites:
-                if not low_cipher_suite:
-                    low_cipher_suite += cipher_name
-                else:
-                    low_cipher_suite += ", " + cipher_name
-
-        for cipher in preferred.iter('cipherSuite'):
-            cipher_name = cipher.get("name")
-            if cipher_name in self.export_cipher_suites:
-                if not exp_cipher_suite:
-                    exp_cipher_suite += cipher_name
-                else:
-                    exp_cipher_suite += ", " + cipher_name
-            elif cipher_name in self.anonymous_dh_cipher_suites:
-                if not adh_cipher_suite:
-                    adh_cipher_suite += cipher_name
-                else:
-                    adh_cipher_suite += ", " + cipher_name
-            elif cipher_name in self.null_cipher_suites:
-                if not null_cipher_suite:
-                    null_cipher_suite += cipher_name
-                else:
-                    null_cipher_suite += ", " + cipher_name
-            elif cipher_name in self.low_ciphers_suites:
-                if not low_cipher_suite:
-                    low_cipher_suite += cipher_name
-                else:
-                    low_cipher_suite += ", " + cipher_name
-
-        if exp_cipher_suite:
-            issue = SSLYZE_ISSUES[version + "_exp_ciphers"]
-            issue["Description"] += "\n\nExport encryption algorithms found " + exp_cipher_suite
-            issues.append(issue)
-        if adh_cipher_suite:
-            issue = SSLYZE_ISSUES[version + "_adh_ciphers"]
-            issue["Description"] += "\n\nAnonymous DH cipher suites found " + adh_cipher_suite
-            issues.append(issue)
-        if null_cipher_suite:
-            issue = SSLYZE_ISSUES[version + "_null_ciphers"]
-            issue["Description"] += "\n\n\"NULL\" ciphers found " + null_cipher_suite
-            issues.append(issue)
-        if low_cipher_suite:
-            issue = SSLYZE_ISSUES[version + "_low_ciphers"]
-            issue["Description"] += "\"low\" encryption cipher suites found " + low_cipher_suite
-            issues.append(issue)
-
-        return issues
 
     # Browse accepted ciphers and check whether they are blacklisted or whitelisted
     # param:
