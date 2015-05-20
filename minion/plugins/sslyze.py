@@ -299,6 +299,26 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
         }
     },
+    "blacklisted": {
+        "Summary": "List of accepted cipher suites contains blacklisted encryption cipher suites",
+        "Severity": "High",
+        "Description": "The OpenSSL cipher suites supported by the server contains "
+                       "blacklisted encryption cipher suites which are not secure at all",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "unauthorized": {
+        "Summary": "List of accepted cipher suites contains unauthorized encryption cipher suites",
+        "Severity": "Medium",
+        "Description": "The OpenSSL cipher suites supported by the server contains "
+                       "non authorized encryption cipher suites which are not secure",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
 }
 
 
@@ -383,6 +403,55 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         return issues
 
+    # Browse accepted ciphers and check whether they are blacklisted or whitelisted
+    # param:
+    #   root :      xml element containing ciphers for a ssl/tls version
+    #   version :   name of the version assessed like "tls V1.2"
+    def filter_cipher(self, root, version):
+        issues = []
+        blacklisted = ""
+        not_whitelisted = ""
+
+        # Get valid cipher suite for the version
+        accepted = root.find("acceptedCipherSuites")
+
+        # Browse the cipher list
+        for cipher in accepted.iter('cipherSuite'):
+            cipher_name = cipher.get("name")
+
+            # Check if the cipher is not whitelisted
+            if cipher_name not in self.whitelist_cipher:
+                # Check if the cipher contains blacklisted term
+                if any(bl_c in cipher_name for bl_c in self.blacklist_cipher):
+
+                    # Add cipher to blacklist issue
+                    if not blacklisted:
+                        blacklisted += cipher_name
+                    else:
+                        blacklisted += ", " + cipher_name
+                else:
+                    # Add the cipher to unauthorized list
+                    if not not_whitelisted:
+                        not_whitelisted += cipher_name
+                    else:
+                        not_whitelisted += ", " + cipher_name
+
+        # Create issue for blacklisted cipher
+        if blacklisted:
+            issue = SSLYZE_ISSUES["blacklisted"].copy()
+            issue["Summary"] = version + " - " + issue["Summary"]
+            issue["Description"] += "\n\nBlacklisted encryption algorithms found :\n" + blacklisted
+            issues.append(issue)
+
+        # Create issue for unauthorized cipher
+        if not_whitelisted:
+            issue = SSLYZE_ISSUES["unauthorized"].copy()
+            issue["Summary"] = version + " - "  + issue["Summary"]
+            issue["Description"] += "\n\nUnauthorized encryption algorithms found :\n" + not_whitelisted
+            issues.append(issue)
+
+        preferred = root.find("preferredCipherSuite")
+        return issues
 
     def parse_sslyze_output(self, output):
 
@@ -498,7 +567,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # SSLV2 Cipher Suites
         sslv2 = root.find(".//sslv2")
-        if sslv2 is not None:
+        if sslv2 is not None and sslv2.get("isProtocolSupported") == "True":
             accepted = sslv2.find("acceptedCipherSuites")
             preferred = sslv2.find("preferredCipherSuite")
 
@@ -509,12 +578,13 @@ class SSLyzePlugin(ExternalProcessPlugin):
                     accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
 
                     issue = SSLYZE_ISSUES["SSLV2"]
-                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + "/ ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
+                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + \
+                                            "/ ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
                     issues.append(issue)
 
         # SSLV3 Cipher Suites
         sslv3 = root.find(".//sslv3")
-        if sslv3 is not None:
+        if sslv3 is not None and sslv3.get("isProtocolSupported") == "True":
             accepted = sslv3.find("acceptedCipherSuites")
             preferred = sslv3.find("preferredCipherSuite")
 
@@ -529,28 +599,20 @@ class SSLyzePlugin(ExternalProcessPlugin):
                                             ", ".join(preferred_ciphers) + "/ " + ", ".join(accepted_ciphers)
                     issues.append(issue)
 
-            issues.extend(self._find_weak_ciphers(sslv3, "SSLV3"))
-
         # TLSV1 Cipher Suites
         tlsv1 = root.find(".//tlsv1")
         if tlsv1 is not None:
-            issues.extend(self._find_weak_ciphers(tlsv1, "TLSV1"))
+            issues.extend(self.filter_cipher(tlsv1, "TLSV 1"))
 
         # TLSV1.1 Cipher Suites
         tlsv1_1 = root.find(".//tlsv1_1")
         if tlsv1_1 is not None:
-            issues.extend(self._find_weak_ciphers(tlsv1_1, "TLSV1_1"))
+            issues.extend(self.filter_cipher(tlsv1_1, "TLSV 1.1"))
 
         # TLSV1.2 Cipher Suites
         tlsv1_2 = root.find(".//tlsv1_2")
         if tlsv1_2 is not None and tlsv1_2.get("isProtocolSupported") == "True":
-            issues.extend(self._find_weak_ciphers(tlsv1_2, "TLSV1_2"))
-
-            accepted = root.find("acceptedCipherSuites")
-            preferred = root.find("preferredCipherSuite")
-
-            #if not accepted and not preferred:
-            #    issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
+            issues.extend(self.filter_cipher(tlsv1_2, "TLSV 1.2"))
         else:
             issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
         # For each issue add the hostname scanned in the URL field:
@@ -558,7 +620,6 @@ class SSLyzePlugin(ExternalProcessPlugin):
             issue["URLs"] = [{"URL": self.target}]
 
         return issues
-
 
     def _check_options(self):
         args = []
@@ -650,6 +711,9 @@ class SSLyzePlugin(ExternalProcessPlugin):
         self.null_cipher_suites = []
         self.low_ciphers_suites = []
 
+        self.blacklist_cipher = []
+        self.whitelist_cipher = []
+
         if "export_cipher_suites" in self.configuration:
             self.export_cipher_suites = self.configuration["export_cipher_suites"].split(':')
         if "anonymous_dh_cipher_suites" in self.configuration:
@@ -658,6 +722,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
             self.null_cipher_suites = self.configuration["null_cipher_suites"].split(':')
         if "low_cipher_suites" in self.configuration:
             self.low_ciphers_suites = self.configuration["low_cipher_suites"].split(':')
+
+        if "blacklist_cipher" in self.configuration:
+            self.blacklist_cipher = self.configuration["blacklist_cipher"].split(':')
+
+        if "whitelist_cipher" in self.configuration:
+            self.whitelist_cipher = self.configuration["whitelist_cipher"].split(':')
 
     def do_start(self):
 
