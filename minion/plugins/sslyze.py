@@ -169,6 +169,16 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
         }
     },
+    "deprecated": {
+        "Summary": "List of accepted cipher suites contains deprecated cipher",
+        "Severity": "Low",
+        "Description": "The OpenSSL cipher suites supported by the server contains deprecated cipher "
+                       "that need to be removed in the future",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
 }
 
 
@@ -187,6 +197,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
         issues = []
         blacklisted = ""
         not_whitelisted = ""
+        deprecated = ""
 
         # Get valid cipher suite for the version
         accepted = root_node.find("acceptedCipherSuites")
@@ -199,7 +210,6 @@ class SSLyzePlugin(ExternalProcessPlugin):
             if cipher_name not in self.whitelist_cipher:
                 # Check if the cipher contains blacklisted term
                 if any(bl_c in cipher_name for bl_c in self.blacklist_cipher):
-
                     # Add cipher to blacklist issue
                     if not blacklisted:
                         blacklisted += cipher_name
@@ -212,6 +222,14 @@ class SSLyzePlugin(ExternalProcessPlugin):
                     else:
                         not_whitelisted += ", " + cipher_name
 
+            # Check if the cipher is deprecated
+            if any(dp_c in cipher_name for dp_c in self.deprecated_cipher):
+                # Add the cipher to deprecated list
+                if not deprecated:
+                    deprecated += cipher_name
+                else:
+                    deprecated += ", " + cipher_name
+
         # Create issue for blacklisted cipher
         if blacklisted:
             issue = SSLYZE_ISSUES["blacklisted"].copy()
@@ -222,8 +240,15 @@ class SSLyzePlugin(ExternalProcessPlugin):
         # Create issue for unauthorized cipher
         if not_whitelisted:
             issue = SSLYZE_ISSUES["unauthorized"].copy()
-            issue["Summary"] = version + " - "  + issue["Summary"]
+            issue["Summary"] = version + " - " + issue["Summary"]
             issue["Description"] += "\n\nUnauthorized encryption algorithms found :\n" + not_whitelisted
+            issues.append(issue)
+
+        # Create issue for deprecated cipher
+        if deprecated:
+            issue = SSLYZE_ISSUES["deprecated"].copy()
+            issue["Summary"] = version + " - " + issue["Summary"]
+            issue["Description"] += "\n\nDeprecated encryption algorithms found :\n" + deprecated
             issues.append(issue)
 
         return issues
@@ -376,7 +401,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 validation_result = path_validation.get("validationResult")
                 if validation_result != "ok":
                     if not bad_cert_validation:
-                        bad_cert_validation += path_validation.get("usingTrustStore") + " : " + validation_result
+                        bad_cert_validation += str(path_validation.get("usingTrustStore")) + " : " + str(validation_result)
                     else:
                         bad_cert_validation += "\n" + path_validation.get("usingTrustStore") + " : " + validation_result
 
@@ -544,6 +569,8 @@ class SSLyzePlugin(ExternalProcessPlugin):
         self.blacklist_cipher = []
         self.whitelist_cipher = []
 
+        self.deprecated_cipher = []
+
         self.enforce_order = "False"
 
         if "export_cipher_suites" in self.configuration:
@@ -563,6 +590,9 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         if "enforce_order" in self.configuration:
             self.enforce_order = self.configuration["enforce_order"]
+
+        if "deprecated" in self.configuration:
+            self.deprecated_cipher = self.configuration["deprecated"].split(':')
 
     def do_start(self):
 
