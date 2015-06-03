@@ -179,7 +179,27 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
         }
     },
-}
+    "wrong_wildcard": {
+        "Summary": "Incorrect usage of wildcard for CommonName or AlternativeName",
+        "Severity": "Low",
+        "Description": "The wildcard in the CommonName or AlternativeName is used incorrectly."
+                       " The domain mustn't contains a wildcard '*' within its name",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    "domain_wildcard": {
+        "Summary": "Dangerous usage of wildcard for CommonName or AlternativeName",
+        "Severity": "Low",
+        "Description": "The wildcard in the CommonName or AlternativeName is used incorrectly."
+                       " The wildcard '*' used as a sub-domain is too close to the top domain",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
+    }
 
 
 class SSLyzePlugin(ExternalProcessPlugin):
@@ -299,6 +319,48 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         return issues
 
+    # Checks the validity of wildcard usage
+    # param :
+    #   url : address or commonName or AlternativeName to check
+    # return : array containing issues
+    def check_wildcard(self, url):
+        # Check if url contains a wildcard
+        if "*" not in url:
+            return []
+
+        # Remove the protocol from the url if any
+        url = url.replace("https://", "")
+        url = url.replace("http://", "")
+
+        url_elements = url.split('.')
+        # url_elements = ["abcde","co","uk"]
+
+        # Check that the lowest level doesn't contains a word with wildcard like *domain
+        if "*" in url_elements[0] and len(url_elements[0]) > 1:
+            issue = SSLYZE_ISSUES["wrong_wildcard"].copy()
+            issue["Description"] += "\nIncriminated field is <em>" + url + "</em>"
+            return [issue]
+
+        # Try to frind the tld from longest to shortest
+        for i in range(-len(url_elements), 0):
+            last_i_elements = url_elements[i:]
+            #    i=-3: ["abcde","co","uk"]
+            #    i=-2: ["co","uk"]
+            #    i=-1: ["uk"] etc
+
+            # Rebuild the url
+            candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
+
+            if candidate in self.tlds:
+                # Remove the tld from the url
+                domains = list(set(url_elements) - set(last_i_elements))
+
+                # Check the number of subdomains is greated for the wildcard than specified
+                if len(domains) < self.wildcard_level:
+                    issue = SSLYZE_ISSUES["domain_wildcard"].copy()
+                    issue["Description"] += "\nIncriminated field is <em>" + url + "</em>"
+                    return [issue]
+
     def parse_sslyze_output(self, output):
 
         try:
@@ -382,13 +444,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # Certificate - Trust:
         hostname_validation = root.find(".//hostnameValidation")
+        common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
 
         if hostname_validation is not None:
             if hostname_validation.get("certificateMatchesServerHostname") != "True":
                 issue = SSLYZE_ISSUES["Hostname validation"]
-
-                # find the CommonName of the certificate
-                common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
                 issue["Description"] += "\n\nActually, the commonName for the certificate is " + common_name
 
                 issues.append(issue)
@@ -470,6 +530,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 issues.extend(self.check_cipher_order(tlsv1_2, "TLS 1.2"))
         else:
             issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
+
+        # Check wildcard
+        issues.extend(self.check_wildcard(common_name))
+
         # For each issue add the hostname scanned in the URL field:
         for issue in issues:
             issue["URLs"] = [{"URL": self.target}]
@@ -568,10 +632,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         self.blacklist_cipher = []
         self.whitelist_cipher = []
-
         self.deprecated_cipher = []
 
         self.enforce_order = "False"
+        self.tlds = []
+        self.wildcard_level = -1
 
         if "export_cipher_suites" in self.configuration:
             self.export_cipher_suites = self.configuration["export_cipher_suites"].split(':')
@@ -593,6 +658,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         if "deprecated" in self.configuration:
             self.deprecated_cipher = self.configuration["deprecated"].split(':')
+
+        if "wildcard_level" in self.configuration:
+            self.wildcard_level = int(self.configuration["wildcard_level"])
+            with open("/home/glestel/effective_tld_names.dat.txt") as tld_file:
+                self.tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
 
     def do_start(self):
 
