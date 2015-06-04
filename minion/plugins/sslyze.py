@@ -482,7 +482,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 validation_result = path_validation.get("validationResult")
                 if validation_result != "ok":
                     bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
-                                           " : " + str(validation_result) + "\n"
+                        " : " + str(validation_result) + "\n"
 
             if bad_cert_validation:
                 issue = SSLYZE_ISSUES["Certificate validation"]
@@ -652,12 +652,6 @@ class SSLyzePlugin(ExternalProcessPlugin):
         return args
 
     def do_configure(self):
-
-        self.export_cipher_suites = []
-        self.anonymous_dh_cipher_suites = []
-        self.null_cipher_suites = []
-        self.low_ciphers_suites = []
-
         self.blacklist_cipher = []
         self.whitelist_cipher = []
         self.deprecated_cipher = []
@@ -665,15 +659,6 @@ class SSLyzePlugin(ExternalProcessPlugin):
         self.enforce_order = "False"
         self.tlds = []
         self.wildcard_level = -1
-
-        if "export_cipher_suites" in self.configuration:
-            self.export_cipher_suites = self.configuration["export_cipher_suites"].split(':')
-        if "anonymous_dh_cipher_suites" in self.configuration:
-            self.anonymous_dh_cipher_suites = self.configuration["anonymous_dh_cipher_suites"].split(':')
-        if "null_cipher_suites" in self.configuration:
-            self.null_cipher_suites = self.configuration["null_cipher_suites"].split(':')
-        if "low_cipher_suites" in self.configuration:
-            self.low_ciphers_suites = self.configuration["low_cipher_suites"].split(':')
 
         if "blacklist_cipher" in self.configuration:
             self.blacklist_cipher = self.configuration["blacklist_cipher"].split(':')
