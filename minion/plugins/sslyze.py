@@ -691,7 +691,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
             self.wildcard_level = int(self.configuration["wildcard_level"])
 
             if "tld_path" in self.configuration:
-                with open("/home/glestel/effective_tld_names.dat.txt") as tld_file:
+                with open(self.configuration["tld_path"]) as tld_file:
                     self.tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
 
     def do_start(self):
