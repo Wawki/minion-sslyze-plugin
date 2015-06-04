@@ -321,45 +321,66 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
     # Checks the validity of wildcard usage
     # param :
-    #   url : address or commonName or AlternativeName to check
+    #   urls : array containing address or commonName or AlternativeName to check
     # return : array containing issues
-    def check_wildcard(self, url):
-        # Check if url contains a wildcard
-        if "*" not in url:
-            return []
+    def check_wildcard(self, urls):
+        issues = []
+        mixed_wildcard = []
+        bad_level_wildcard = []
 
-        # Remove the protocol from the url if any
-        url = url.replace("https://", "")
-        url = url.replace("http://", "")
+        for url in urls:
+            # Check if url contains a wildcard
+            if "*" not in url:
+                continue
 
-        url_elements = url.split('.')
-        # url_elements = ["abcde","co","uk"]
+            # Remove the protocol from the url if any
+            url = url.replace("https://", "")
+            url = url.replace("http://", "")
 
-        # Check that the lowest level doesn't contains a word with wildcard like *domain
-        if "*" in url_elements[0] and len(url_elements[0]) > 1:
+            url_elements = url.split('.')
+            # url_elements = ["abcde","co","uk"]
+
+            # Check that the lowest level doesn't contains a word with wildcard like *domain
+            if "*" in url_elements[0] and len(url_elements[0]) > 1:
+                mixed_wildcard.append(url)
+                continue
+
+            # Try to frind the tld from longest to shortest
+            for i in range(-len(url_elements), 0):
+                last_i_elements = url_elements[i:]
+                #    i=-3: ["abcde","co","uk"]
+                #    i=-2: ["co","uk"]
+                #    i=-1: ["uk"] etc
+
+                # Rebuild the url
+                candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
+
+                if candidate in self.tlds:
+                    # Remove the tld from the url
+                    domains = list(set(url_elements) - set(last_i_elements))
+
+                    # Check the number of subdomains is greated for the wildcard than specified
+                    if len(domains) < self.wildcard_level:
+                        bad_level_wildcard.append(url)
+
+        # Create issue for mixed domain with wildcard
+        if mixed_wildcard:
             issue = SSLYZE_ISSUES["wrong_wildcard"].copy()
-            issue["Description"] += "\nIncriminated field is <em>" + url + "</em>"
-            return [issue]
+            issue["Description"] += "\nIncriminated field are: \n <em>"
+            for url in set(mixed_wildcard):
+                issue["Description"] += url + "\n"
+            issue["Description"] += "</em>"
+            issues.append(issue)
 
-        # Try to frind the tld from longest to shortest
-        for i in range(-len(url_elements), 0):
-            last_i_elements = url_elements[i:]
-            #    i=-3: ["abcde","co","uk"]
-            #    i=-2: ["co","uk"]
-            #    i=-1: ["uk"] etc
+        if bad_level_wildcard:
+            issue = SSLYZE_ISSUES["domain_wildcard"].copy()
+            issue["Description"] += "\nIncriminated field are: \n <em>"
+            for url in set(bad_level_wildcard):
+                issue["Description"] += url + "\n"
+            issue["Description"] += "</em>"
+            issues.append(issue)
 
-            # Rebuild the url
-            candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
-
-            if candidate in self.tlds:
-                # Remove the tld from the url
-                domains = list(set(url_elements) - set(last_i_elements))
-
-                # Check the number of subdomains is greated for the wildcard than specified
-                if len(domains) < self.wildcard_level:
-                    issue = SSLYZE_ISSUES["domain_wildcard"].copy()
-                    issue["Description"] += "\nIncriminated field is <em>" + url + "</em>"
-                    return [issue]
+        return issues
 
     def parse_sslyze_output(self, output):
 
@@ -460,10 +481,8 @@ class SSLyzePlugin(ExternalProcessPlugin):
             for path_validation in path_validations:
                 validation_result = path_validation.get("validationResult")
                 if validation_result != "ok":
-                    if not bad_cert_validation:
-                        bad_cert_validation += str(path_validation.get("usingTrustStore")) + " : " + str(validation_result)
-                    else:
-                        bad_cert_validation += "\n" + path_validation.get("usingTrustStore") + " : " + validation_result
+                    bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
+                                           " : " + str(validation_result) + "\n"
 
             if bad_cert_validation:
                 issue = SSLYZE_ISSUES["Certificate validation"]
@@ -531,8 +550,17 @@ class SSLyzePlugin(ExternalProcessPlugin):
         else:
             issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
 
-        # Check wildcard
-        issues.extend(self.check_wildcard(common_name))
+        # Get alternativeNames
+        alternative_names = root.find(".//certificate[@position='leaf']/extensions/X509v3SubjectAlternativeName/DNS")
+
+        # Build a list to verify
+        names = [common_name]
+
+        for list_entry in alternative_names:
+            names.append(list_entry.text)
+
+        # Check wildcard for CommonName and AlternativeNames
+        issues.extend(self.check_wildcard(names))
 
         # For each issue add the hostname scanned in the URL field:
         for issue in issues:
@@ -661,8 +689,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         if "wildcard_level" in self.configuration:
             self.wildcard_level = int(self.configuration["wildcard_level"])
-            with open("/home/glestel/effective_tld_names.dat.txt") as tld_file:
-                self.tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
+
+            if "tld_path" in self.configuration:
+                with open("/home/glestel/effective_tld_names.dat.txt") as tld_file:
+                    self.tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
 
     def do_start(self):
 
