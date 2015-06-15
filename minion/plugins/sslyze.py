@@ -397,6 +397,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
         invalid_target = root.find(".//invalidTarget")
         if invalid_target is not None:
             self.sslyze_stderr = invalid_target.get("error")
+            return
 
         # Session Renegotiation
         session_renegotiation = root.find(".//sessionRenegotiation")
