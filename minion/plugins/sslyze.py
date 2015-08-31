@@ -441,7 +441,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
             key_size = int(public_key_size.text.split(" ")[0])
             if key_size < 2048:
                 issue = SSLYZE_ISSUES["Public key size"]
-                issue["Definition"] += "\n\nActually, the public key size found is " + key_size
+                issue["Definition"] += "\n\nActually, the public key size found is " + str(key_size)
                 issues.append(issue)
 
         # Check if the certificate is expired
@@ -471,7 +471,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if hostname_validation is not None:
             if hostname_validation.get("certificateMatchesServerHostname") != "True":
                 issue = SSLYZE_ISSUES["Hostname validation"]
-                issue["Description"] += "\n\nActually, the commonName for the certificate is " + common_name
+
+                # Add common name from certificate if existing
+                if common_name:
+                    issue["Description"] += "\n\nActually, the commonName for the certificate is " + common_name
 
                 issues.append(issue)
 
@@ -557,8 +560,9 @@ class SSLyzePlugin(ExternalProcessPlugin):
         # Build a list to verify
         names = [common_name]
 
-        for list_entry in alternative_names:
-            names.append(list_entry.text)
+        if alternative_names is not None:
+            for list_entry in alternative_names:
+                names.append(list_entry.text)
 
         # Check wildcard for CommonName and AlternativeNames
         issues.extend(self.check_wildcard(names))
