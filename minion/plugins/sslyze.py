@@ -199,6 +199,15 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
         }
     },
+    "no_ca": {
+        "Summary": "No certificate verification",
+        "Severity": "Info",
+        "Description": "The certificate for the host has not been checked",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
     }
 
 
@@ -464,37 +473,46 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 issue["Description"] += "\n\nActually, the validity date begins at " + date
                 issues.append(issue)
 
-        # Certificate - Trust:
-        hostname_validation = root.find(".//hostnameValidation")
-        common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
+        # Check if the certificate is enforced
+        if "certinfo" in self.configuration:
+            # Certificate - Trust:
+            hostname_validation = root.find(".//hostnameValidation")
+            common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
 
-        if hostname_validation is not None:
-            if hostname_validation.get("certificateMatchesServerHostname") != "True":
-                issue = SSLYZE_ISSUES["Hostname validation"]
+            if hostname_validation is not None:
+                if hostname_validation.get("certificateMatchesServerHostname") != "True":
+                    issue = SSLYZE_ISSUES["Hostname validation"]
 
-                # Add common name from certificate if existing
-                if common_name:
-                    issue["Description"] += "\n\nActually, the commonName for the certificate is " + common_name
+                    # Add common name from certificate if existing
+                    if common_name:
+                        issue["Description"] += "\n\nActually, the commonName for the certificate is " + common_name
 
-                issues.append(issue)
+                    issues.append(issue)
 
-        path_validations = root.findall(".//pathValidation")
+            path_validations = root.findall(".//pathValidation")
 
-        if path_validations:
-            bad_cert_validation = ""
-            for path_validation in path_validations:
-                validation_result = path_validation.get("validationResult")
-                if validation_result != "ok":
-                    bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
-                        " : " + str(validation_result) + "\n"
+            if path_validations:
+                bad_cert_validation = ""
+                for path_validation in path_validations:
+                    validation_result = path_validation.get("validationResult")
+                    if validation_result != "ok":
+                        # Check if only the custom CA matters
+                        if (self.only_custom_CA and path_validation.get("usingTrustStore") == "Custom --ca_file") \
+                                or not self.only_custom_CA:
+                            bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
+                                " : " + str(validation_result) + "\n"
 
-            if bad_cert_validation:
-                issue = SSLYZE_ISSUES["Certificate validation"]
-                issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
-                                        + bad_cert_validation
-                issues.append(issue)
+                if bad_cert_validation:
+                    issue = SSLYZE_ISSUES["Certificate validation"]
+                    issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
+                                            + bad_cert_validation
+                    issues.append(issue)
+        else:
+            # Raise info
+            issue = SSLYZE_ISSUES["no_ca"]
+            issues.append(issue)
 
-        # SSLV2 Cipher Suites
+        # SSL V2 Cipher Suites
         sslv2 = root.find(".//sslv2")
         if sslv2 is not None and sslv2.get("isProtocolSupported") == "True":
             accepted = sslv2.find("acceptedCipherSuites")
@@ -511,7 +529,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                                             "/ ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
                     issues.append(issue)
 
-        # SSLV3 Cipher Suites
+        # SSL V3 Cipher Suites
         sslv3 = root.find(".//sslv3")
         if sslv3 is not None and sslv3.get("isProtocolSupported") == "True":
             accepted = sslv3.find("acceptedCipherSuites")
@@ -528,7 +546,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                                             ", ".join(preferred_ciphers) + "/ " + ", ".join(accepted_ciphers)
                     issues.append(issue)
 
-        # TLSV1 Cipher Suites
+        # TLS V1 Cipher Suites
         tlsv1 = root.find(".//tlsv1")
         if tlsv1 is not None and tlsv1.get("isProtocolSupported") == "True":
             issues.extend(self.filter_cipher(tlsv1, "TLS 1"))
@@ -536,7 +554,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
             if self.enforce_order == "True":
                 issues.extend(self.check_cipher_order(tlsv1, "TLS 1"))
 
-        # TLSV1.1 Cipher Suites
+        # TLS V1.1 Cipher Suites
         tlsv1_1 = root.find(".//tlsv1_1")
         if tlsv1_1 is not None and tlsv1_1.get("isProtocolSupported") == "True":
             issues.extend(self.filter_cipher(tlsv1_1, "TLS 1.1"))
@@ -544,7 +562,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
             if self.enforce_order == "True":
                 issues.extend(self.check_cipher_order(tlsv1_1, "TLS 1.1"))
 
-        # TLSV1.2 Cipher Suites
+        # TLS V1.2 Cipher Suites
         tlsv1_2 = root.find(".//tlsv1_2")
         if tlsv1_2 is not None and tlsv1_2.get("isProtocolSupported") == "True":
             issues.extend(self.filter_cipher(tlsv1_2, "TLS 1.2"))
@@ -554,18 +572,20 @@ class SSLyzePlugin(ExternalProcessPlugin):
         else:
             issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
 
-        # Get alternativeNames
-        alternative_names = root.find(".//certificate[@position='leaf']/extensions/X509v3SubjectAlternativeName/DNS")
+        # Check wildcard if the certificate is enforced
+        if "certinfo" in self.configuration:
+            # Get alternativeNames
+            alternative_names = root.find(".//certificate[@position='leaf']/extensions/X509v3SubjectAlternativeName/DNS")
 
-        # Build a list to verify
-        names = [common_name]
+            # Build a list to verify
+            names = [common_name]
 
-        if alternative_names is not None:
-            for list_entry in alternative_names:
-                names.append(list_entry.text)
+            if alternative_names is not None:
+                for list_entry in alternative_names:
+                    names.append(list_entry.text)
 
-        # Check wildcard for CommonName and AlternativeNames
-        issues.extend(self.check_wildcard(names))
+            # Check wildcard for CommonName and AlternativeNames
+            issues.extend(self.check_wildcard(names))
 
         # For each issue add the hostname scanned in the URL field:
         for issue in issues:
@@ -645,6 +665,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if "hsts" in self.configuration:
             args += ["--hsts"]
 
+        # External --ca_file
+        if "ca_file" in self.configuration:
+            args += ["--ca_file", self.configuration["ca_file"]]
+
         # Get additional parameters
         params = []
         if 'parameters' in self.configuration:
@@ -683,6 +707,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
             if "tld_path" in self.configuration:
                 with open(self.configuration["tld_path"]) as tld_file:
                     self.tlds = [line.strip() for line in tld_file if line[0] not in "/\n"]
+
+        # Check only against defined CA (array)
+        if "only_custom_CA" in self.configuration:
+            self.only_custom_CA = self.configuration["only_custom_CA"]
+        else:
+            self.only_custom_CA = False
 
     def do_start(self):
 
