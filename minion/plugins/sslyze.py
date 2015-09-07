@@ -420,7 +420,13 @@ class SSLyzePlugin(ExternalProcessPlugin):
         # Compression
         compression = root.find(".//compression")
         if compression is not None and compression.find("compressionMethod") is not None:
-            issues.append(SSLYZE_ISSUES["Compression"])
+            # Check every compression methods
+            for compression_method in compression:
+                if compression_method.get("isSupported") != "False":
+                    issues.append(SSLYZE_ISSUES["Compression"])
+
+                    # One faulty method is enough
+                    break
 
         # Heartbleed
         heartbleed = root.find(".//heartbleed/openSslHeartbleed")
