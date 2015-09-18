@@ -208,6 +208,17 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
         }
     },
+    "extra_cert": {
+        "Summary": "Extra certificate in the chain",
+        "Severity": "Info",
+        "Description": "Those seem to be bugs in NSS validation which cause the library it to prefer lower security "
+                       "validation paths using older certificates "
+                       "over higher security validation paths using newer certificates.",
+        "Classification": {
+            "cwe_id": "327",
+            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+        }
+    },
     }
 
 
@@ -509,10 +520,16 @@ class SSLyzePlugin(ExternalProcessPlugin):
                                 " : " + str(validation_result) + "\n"
 
                 if bad_cert_validation:
-                    issue = SSLYZE_ISSUES["Certificate validation"]
-                    issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
-                                            + bad_cert_validation
-                    issues.append(issue)
+                    # Check if the grey-false positive from Mozilla due to extra cert is important
+                    ignore_nss = self.configuration.get("ignore_extra_cert")
+                    if bad_cert_validation == "Mozilla NSS : unable to get local issuer certificate\n" and ignore_nss:
+                        issue = SSLYZE_ISSUES["extra_cert"]
+                        issues.append(issue)
+                    else:
+                        issue = SSLYZE_ISSUES["Certificate validation"]
+                        issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
+                                                + bad_cert_validation
+                        issues.append(issue)
         else:
             # Raise info
             issue = SSLYZE_ISSUES["no_ca"]
