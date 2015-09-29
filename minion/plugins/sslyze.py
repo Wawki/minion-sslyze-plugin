@@ -224,7 +224,7 @@ SSLYZE_ISSUES = {
 
 class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_NAME = "SSlyze"
-    PLUGIN_VERSION = "0.1"
+    PLUGIN_VERSION = "0.12"
     PLUGIN_WEIGHT = "light"
 
     SSLyze_NAME = "sslyze.py"
@@ -516,8 +516,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
                         # Check if only the custom CA matters
                         if (self.only_custom_CA and path_validation.get("usingTrustStore") == "Custom --ca_file") \
                                 or not self.only_custom_CA:
+                            # Get possible error message
+                            error_result = path_validation.get("error")
+
                             bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
-                                " : " + str(validation_result) + "\n"
+                                " : " + str(error_result or validation_result) + "\n"
 
                 if bad_cert_validation:
                     # Check if the grey-false positive from Mozilla due to extra cert is important
