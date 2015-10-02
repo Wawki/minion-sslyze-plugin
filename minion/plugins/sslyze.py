@@ -494,7 +494,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if "certinfo" in self.configuration:
             # Certificate - Trust:
             hostname_validation = root.find(".//hostnameValidation")
-            common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
+            try:
+                common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
+            except AttributeError as e:
+                common_name = ET.tostring(root.find(".//certificate[@position='leaf']/subject"))
 
             if hostname_validation is not None:
                 if hostname_validation.get("certificateMatchesServerHostname") != "True":
