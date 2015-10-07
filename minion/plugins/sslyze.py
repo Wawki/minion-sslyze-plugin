@@ -6,7 +6,6 @@
 import time
 import os
 import xml.etree.cElementTree as ET
-import datetime
 import uuid
 import socket
 from urlparse import urlparse
@@ -202,11 +201,7 @@ SSLYZE_ISSUES = {
     "no_ca": {
         "Summary": "No certificate verification",
         "Severity": "Info",
-        "Description": "The certificate for the host has not been checked",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        "Description": "The certificate for the host has not been checked"
     },
     "extra_cert": {
         "Summary": "Extra certificate in the chain",
@@ -219,6 +214,13 @@ SSLYZE_ISSUES = {
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
         }
     },
+    "no_ocsp": {
+        "Summary": "No OCSP provided",
+        "Severity": "Info",
+        "Description": "The serveur does not provides OCSP Stapling for its certificate. "
+                       "OCSP Stapling is used for checking the revocation status of existing certificate in order"
+                       "to quicken the TLS hand-check"
+        }
     }
 
 
@@ -490,14 +492,23 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 issue["Description"] += "\n\nActually, the validity date begins at " + date
                 issues.append(issue)
 
+        # Check if ocspStapling is activated
+        ocsp = root.find(".//ocspStapling ")
+        if ocsp is None or ocsp.get("isSupported") == "False":
+            issue = SSLYZE_ISSUES["no_ocsp"]
+            issues.append(issue)
+
         # Check if the certificate is enforced
         if "certinfo" in self.configuration:
+            # Check sslyze got results
+            
+
             # Certificate - Trust:
             hostname_validation = root.find(".//hostnameValidation")
             try:
                 common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
             except AttributeError as e:
-                common_name = ET.tostring(root.find(".//certificate[@position='leaf']/subject"))
+                common_name = "Error Cloud Not get the Certificate Info"
 
             if hostname_validation is not None:
                 if hostname_validation.get("certificateMatchesServerHostname") != "True":
