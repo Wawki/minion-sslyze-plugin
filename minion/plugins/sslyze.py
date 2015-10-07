@@ -203,6 +203,11 @@ SSLYZE_ISSUES = {
         "Severity": "Info",
         "Description": "The certificate for the host has not been checked"
     },
+    "get_no_ca": {
+        "Summary": "Could not enforce certificate verification",
+        "Severity": "Error",
+        "Description": "SSlyze could not retreive the certificate of the server during the analysis. Error was : "
+    },
     "extra_cert": {
         "Summary": "Extra certificate in the chain",
         "Severity": "Info",
@@ -215,10 +220,10 @@ SSLYZE_ISSUES = {
         }
     },
     "no_ocsp": {
-        "Summary": "No OCSP provided",
+        "Summary": "No OCSP Stapling provided",
         "Severity": "Info",
         "Description": "The serveur does not provides OCSP Stapling for its certificate. "
-                       "OCSP Stapling is used for checking the revocation status of existing certificate in order"
+                       "OCSP Stapling is used for checking the revocation status of existing certificate in order "
                        "to quicken the TLS hand-check"
         }
     }
@@ -493,16 +498,13 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 issues.append(issue)
 
         # Check if ocspStapling is activated
-        ocsp = root.find(".//ocspStapling ")
+        ocsp = root.find(".//ocspStapling")
         if ocsp is None or ocsp.get("isSupported") == "False":
             issue = SSLYZE_ISSUES["no_ocsp"]
             issues.append(issue)
 
-        # Check if the certificate is enforced
-        if "certinfo" in self.configuration:
-            # Check sslyze got results
-            
-
+        # Check if the certificate is enforced and sslyze got results
+        if "certinfo" in self.configuration and "exception" not in root.find(".//certinfo"):
             # Certificate - Trust:
             hostname_validation = root.find(".//hostnameValidation")
             try:
@@ -534,7 +536,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                             error_result = path_validation.get("error")
 
                             bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
-                                " : " + str(error_result or validation_result) + "\n"
+                                                   " : " + str(error_result or validation_result) + "\n"
 
                 if bad_cert_validation:
                     # Check if the grey-false positive from Mozilla due to extra cert is important
@@ -547,6 +549,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
                         issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
                                                 + bad_cert_validation
                         issues.append(issue)
+        # Check if SSLyze couldn't get the certificate
+        elif "exception" in root.find(".//certinfo"):
+            issue = SSLYZE_ISSUES["get_no_ca"]
+            issue["Description"] += root.find(".//certinfo").get("exception")
+            issues.append(issue)
+
         else:
             # Raise info
             issue = SSLYZE_ISSUES["no_ca"]
