@@ -549,16 +549,17 @@ class SSLyzePlugin(ExternalProcessPlugin):
                         issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
                                                 + bad_cert_validation
                         issues.append(issue)
-        # Check if SSLyze couldn't get the certificate
-        elif "exception" in root.find(".//certinfo"):
-            issue = SSLYZE_ISSUES["get_no_ca"]
-            issue["Description"] += root.find(".//certinfo").get("exception")
-            issues.append(issue)
-
         else:
-            # Raise info
-            issue = SSLYZE_ISSUES["no_ca"]
-            issues.append(issue)
+            # Check if SSLyze couldn't get the certificate
+            try:
+                if "exception" in root.find(".//certinfo"):
+                    issue = SSLYZE_ISSUES["get_no_ca"]
+                    issue["Description"] += root.find(".//certinfo").get("exception")
+                    issues.append(issue)
+            except Exception as e:
+                # Raise info
+                issue = SSLYZE_ISSUES["no_ca"]
+                issues.append(issue)
 
         # SSL V2 Cipher Suites
         sslv2 = root.find(".//sslv2")
