@@ -8,6 +8,7 @@ import os
 import xml.etree.cElementTree as ET
 import uuid
 import socket
+import hashlib
 from urlparse import urlparse
 from minion.plugins.base import ExternalProcessPlugin
 
@@ -19,7 +20,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "310",
             "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "Secure Renegotiation":  {
         "Summary": "Secure Renegotiation - Not supported",
@@ -28,7 +30,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "310",
             "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "Compression": {
         "Summary": "Compression - Supported",
@@ -37,7 +40,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "310",
             "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "Heartbleed": {
         "Summary": "Heartbleed vulnerable",
@@ -46,17 +50,20 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "126",
             "cwe_url": "http://cwe.mitre.org/data/definitions/126.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "Session ressumption with session IDs": {
         "Summary": "Session ressumption with session IDs - Not supported",
         "Severity": "Info",
         "Description": "Test the server for session ressumption support using session IDs",
+        "issue_type": "configuration"
     },
     "Session ressumption with TLS session tickets": {
         "Summary": "Session ressumption with TLS session tickets - Not supported",
         "Severity": "Info",
-        "Description": "Test the server for session ressumption support using TLS session tickets"
+        "Description": "Test the server for session ressumption support using TLS session tickets",
+        "issue_type": "configuration"
     },
     "HSTS": {
         "Summary": "No HTTP Strict Transport Security (HSTS) directive",
@@ -64,7 +71,8 @@ SSLYZE_ISSUES = {
         "Description": "HSTS is a web security policy mechanism which is necessary to protect secure HTTPS websites "
                        "against downgrade attacks, and which greatly simplifies protection against cookie hijacking. "
                        "It allows web servers to declare that web browsers (or other complying user agents) should only"
-                       " interact with it using secure HTTPS connections, and never via the insecure HTTP protocol"
+                       " interact with it using secure HTTPS connections, and never via the insecure HTTP protocol",
+        "issue_type": "configuration"
     },
     "Public key size": {
         "Summary": "Public key size lower than 2048 bits",
@@ -73,7 +81,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "320",
             "cwe_url": "http://cwe.mitre.org/data/definitions/320.html"
-        }
+        },
+        "issue_type": "certificate"
     },
     "Expired Validity date": {
         "Summary": "Certificate expired: Validity date before current date",
@@ -82,7 +91,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "324",
             "cwe_url": "http://cwe.mitre.org/data/definitions/324.html"
-        }
+        },
+        "issue_type": "certificate"
     },
     "Before Validity date": {
         "Summary": "Certificate not valid: Validity date starts after current date",
@@ -91,7 +101,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "324",
             "cwe_url": "http://cwe.mitre.org/data/definitions/324.html"
-        }
+        },
+        "issue_type": "certificate"
     },
     "Hostname validation": {
         "Summary": "Hostname Validation - NOT OK",
@@ -100,7 +111,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "297",
             "cwe_url": "http://cwe.mitre.org/data/definitions/297.html"
-        }
+        },
+        "issue_type": "hostname"
     },
     "Certificate validation": {
         "Summary": "Certificate validation - NOT OK",
@@ -109,7 +121,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "295",
             "cwe_url": "http://cwe.mitre.org/data/definitions/295.html"
-        }
+        },
+        "issue_type": "certificate"
     },
     "SSLV2": {
         "Summary": "SSL 2.0 - List of accepted cipher suites not empty",
@@ -118,7 +131,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "SSLV3_notempty": {
         "Summary": "SSL 3.0 -  List of accepted cipher suites not empty",
@@ -127,16 +141,18 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "TLSV1_2_not_supported": {
         "Summary": "TLS 1.2 - Not supported",
-        "Severity": "High",
+        "Severity": "Medium",
         "Description": "TLS 1.2 is not supported by this server",
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "blacklisted": {
         "Summary": "List of accepted cipher suites contains blacklisted encryption cipher suites",
@@ -146,7 +162,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "unauthorized": {
         "Summary": "List of accepted cipher suites contains unauthorized encryption cipher suites",
@@ -156,7 +173,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "no_order": {
         "Summary": "List of accepted cipher suites is not in the correct order",
@@ -166,7 +184,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "deprecated": {
         "Summary": "List of accepted cipher suites contains deprecated cipher",
@@ -176,7 +195,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "wrong_wildcard": {
         "Summary": "Incorrect usage of wildcard for CommonName or AlternativeName",
@@ -186,7 +206,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "domain_wildcard": {
         "Summary": "Dangerous usage of wildcard for CommonName or AlternativeName",
@@ -196,7 +217,8 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "no_ca": {
         "Summary": "No certificate verification",
@@ -217,14 +239,16 @@ SSLYZE_ISSUES = {
         "Classification": {
             "cwe_id": "327",
             "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        }
+        },
+        "issue_type": "configuration"
     },
     "no_ocsp": {
         "Summary": "No OCSP Stapling provided",
         "Severity": "Info",
         "Description": "The serveur does not provides OCSP Stapling for its certificate. "
                        "OCSP Stapling is used for checking the revocation status of existing certificate in order "
-                       "to quicken the TLS hand-check"
+                       "to quicken the TLS hand-check",
+        "issue_type": ""
         }
     }
 
@@ -621,7 +645,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
         else:
             issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
 
-        # Check wildcard if the certificate is enforced
+        cert_hash = None
+        signed_by = None
+
+        # Check certificate if the verification is enforced
         if "certinfo" in self.configuration:
             # Get alternativeNames
             alternative_names = root.find(".//certificate[@position='leaf']/extensions/X509v3SubjectAlternativeName/DNS")
@@ -636,9 +663,35 @@ class SSLyzePlugin(ExternalProcessPlugin):
             # Check wildcard for CommonName and AlternativeNames
             issues.extend(self.check_wildcard(names))
 
+            # Get the certificate hash
+            cert_hash = root.find(".//certificate[@position='leaf']").get('sha1Fingerprint')
+
+            # Get the organization that certified the certificate
+            signed_by = root.find(".//certificate[@position='leaf']/issuer/organizationName").text
+
+        # Retrieve the IP
+        target_ip = root.find(".//target").get('ip')
+
         # For each issue add the hostname scanned in the URL field:
         for issue in issues:
-            issue["URLs"] = [{"URL": self.target}]
+            issue["URLs"] = [{"URL": self.target, "Ip": target_ip, "CA": cert_hash, "issuer": signed_by}]
+
+            # Compute the id of issue
+            summary = issue["Summary"] if ("Summary" in issue) else ""
+            cwe_id = issue["Classification"]["cwe_id"] \
+                if "Classification" in issue and "cwe_id" in issue["Classification"] else ""
+            pre_id = None
+
+            # Treat case issue is dependent to certificate
+            if issue.get('issue_type') == "certificate":
+                pre_id = summary + ":" + str(cwe_id) + ":" + cert_hash
+            elif issue.get('issue_type') == 'configuration':
+                pre_id = summary + ":" + str(cwe_id) + ":" + self.target
+
+            # Compute the id
+            if pre_id:
+                hash_id = hashlib.sha256(pre_id.encode())
+                issue['Id'] = hash_id.hexdigest()
 
         return issues
 
