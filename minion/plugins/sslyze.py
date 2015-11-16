@@ -2,270 +2,34 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-
+import datetime
 import time
 import os
 import xml.etree.cElementTree as ET
 import uuid
 import socket
-import hashlib
 from urlparse import urlparse
 from minion.plugins.base import ExternalProcessPlugin
 
-SSLYZE_ISSUES = {
-    "Client-initiated Renegotiations": {
-        "Summary": "Client-initiated Renegotiations - Honored",
-        "Severity": "Medium",
-        "Description": "Test the server for client-initiated renegotiation support",
-        "Classification": {
-            "cwe_id": "310",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
-        },
-        "issue_type": "configuration"
-    },
-    "Secure Renegotiation":  {
-        "Summary": "Secure Renegotiation - Not supported",
-        "Severity": "Medium",
-        "Description": "Test the server for secure renegotiation support",
-        "Classification": {
-            "cwe_id": "310",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
-        },
-        "issue_type": "configuration"
-    },
-    "Compression": {
-        "Summary": "Compression - Supported",
-        "Severity": "High",
-        "Description": "Test the server for Zlib compression support",
-        "Classification": {
-            "cwe_id": "310",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/310.html"
-        },
-        "issue_type": "configuration"
-    },
-    "Heartbleed": {
-        "Summary": "Heartbleed vulnerable",
-        "Severity": "High",
-        "Description": "Vulnerable with the OpenSSL Heartbleed vulnerability",
-        "Classification": {
-            "cwe_id": "126",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/126.html"
-        },
-        "issue_type": "configuration"
-    },
-    "Session ressumption with session IDs": {
-        "Summary": "Session ressumption with session IDs - Not supported",
-        "Severity": "Info",
-        "Description": "Test the server for session ressumption support using session IDs",
-        "issue_type": "configuration"
-    },
-    "Session ressumption with TLS session tickets": {
-        "Summary": "Session ressumption with TLS session tickets - Not supported",
-        "Severity": "Info",
-        "Description": "Test the server for session ressumption support using TLS session tickets",
-        "issue_type": "configuration"
-    },
-    "HSTS": {
-        "Summary": "No HTTP Strict Transport Security (HSTS) directive",
-        "Severity": "Info",
-        "Description": "HSTS is a web security policy mechanism which is necessary to protect secure HTTPS websites "
-                       "against downgrade attacks, and which greatly simplifies protection against cookie hijacking. "
-                       "It allows web servers to declare that web browsers (or other complying user agents) should only"
-                       " interact with it using secure HTTPS connections, and never via the insecure HTTP protocol",
-        "issue_type": "configuration"
-    },
-    "Public key size": {
-        "Summary": "Public key size lower than 2048 bits",
-        "Severity": "High",
-        "Description": "Verify that the the public key size is not lower than 2048 bits",
-        "Classification": {
-            "cwe_id": "320",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/320.html"
-        },
-        "issue_type": "certificate"
-    },
-    "Expired Validity date": {
-        "Summary": "Certificate expired: Validity date before current date",
-        "Severity": "High",
-        "Description": "Verify that the validity date of the certificate is not before the current date",
-        "Classification": {
-            "cwe_id": "324",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/324.html"
-        },
-        "issue_type": "certificate"
-    },
-    "Before Validity date": {
-        "Summary": "Certificate not valid: Validity date starts after current date",
-        "Severity": "High",
-        "Description": "The validity of the certificate is after the current date",
-        "Classification": {
-            "cwe_id": "324",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/324.html"
-        },
-        "issue_type": "certificate"
-    },
-    "Hostname validation": {
-        "Summary": "Hostname Validation - NOT OK",
-        "Severity": "High",
-        "Description": "Verify if the common name matches",
-        "Classification": {
-            "cwe_id": "297",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/297.html"
-        },
-        "issue_type": "hostname"
-    },
-    "Certificate validation": {
-        "Summary": "Certificate validation - NOT OK",
-        "Severity": "High",
-        "Description": "Verify the validity of the server certificate against various trusts stores",
-        "Classification": {
-            "cwe_id": "295",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/295.html"
-        },
-        "issue_type": "certificate"
-    },
-    "SSLV2": {
-        "Summary": "SSL 2.0 - List of accepted cipher suites not empty",
-        "Severity": "High",
-        "Description": "The SSL 2.0 OpenSSL cipher suites supported by the server is not empty",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "SSLV3_notempty": {
-        "Summary": "SSL 3.0 -  List of accepted cipher suites not empty",
-        "Severity": "High",
-        "Description": "The SSL 3.0 OpenSSL cipher suites supported by the server is not empty",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "TLSV1_2_not_supported": {
-        "Summary": "TLS 1.2 - Not supported",
-        "Severity": "Medium",
-        "Description": "TLS 1.2 is not supported by this server",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "blacklisted": {
-        "Summary": "List of accepted cipher suites contains blacklisted encryption cipher suites",
-        "Severity": "High",
-        "Description": "The OpenSSL cipher suites supported by the server contains "
-                       "blacklisted encryption cipher suites which are not secure at all",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "unauthorized": {
-        "Summary": "List of accepted cipher suites contains unauthorized encryption cipher suites",
-        "Severity": "Medium",
-        "Description": "The OpenSSL cipher suites supported by the server contains "
-                       "non authorized encryption cipher suites which are not secure",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "no_order": {
-        "Summary": "List of accepted cipher suites is not in the correct order",
-        "Severity": "Medium",
-        "Description": "The OpenSSL cipher suites supported by the server is order enforced "
-                       "regarding the existing white-list.",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "deprecated": {
-        "Summary": "List of accepted cipher suites contains deprecated cipher",
-        "Severity": "Low",
-        "Description": "The OpenSSL cipher suites supported by the server contains deprecated cipher "
-                       "that need to be removed in the future",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "wrong_wildcard": {
-        "Summary": "Incorrect usage of wildcard for CommonName or AlternativeName",
-        "Severity": "Low",
-        "Description": "The wildcard in the CommonName or AlternativeName is used incorrectly."
-                       " The domain mustn't contains a wildcard '*' within its name",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "domain_wildcard": {
-        "Summary": "Dangerous usage of wildcard for CommonName or AlternativeName",
-        "Severity": "Low",
-        "Description": "The wildcard in the CommonName or AlternativeName is used incorrectly."
-                       " The wildcard '*' used as a sub-domain is too close to the top domain",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "no_ca": {
-        "Summary": "No certificate verification",
-        "Severity": "Info",
-        "Description": "The certificate for the host has not been checked"
-    },
-    "get_no_ca": {
-        "Summary": "Could not enforce certificate verification",
-        "Severity": "Error",
-        "Description": "SSlyze could not retreive the certificate of the server during the analysis. Error was : "
-    },
-    "extra_cert": {
-        "Summary": "Extra certificate in the chain",
-        "Severity": "Info",
-        "Description": "Those seem to be bugs in NSS validation which cause the library it to prefer lower security "
-                       "validation paths using older certificates "
-                       "over higher security validation paths using newer certificates.",
-        "Classification": {
-            "cwe_id": "327",
-            "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
-        },
-        "issue_type": "configuration"
-    },
-    "no_ocsp": {
-        "Summary": "No OCSP Stapling provided",
-        "Severity": "Info",
-        "Description": "The serveur does not provides OCSP Stapling for its certificate. "
-                       "OCSP Stapling is used for checking the revocation status of existing certificate in order "
-                       "to quicken the TLS hand-check",
-        "issue_type": ""
-        }
-    }
+from issues import IssueManager
 
 
 class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_NAME = "SSlyze"
-    PLUGIN_VERSION = "0.12"
+    PLUGIN_VERSION = "0.12.5"
     PLUGIN_WEIGHT = "light"
 
     SSLyze_NAME = "sslyze.py"
+
+    MINIMUM_PUB_KEY_SIZE = 2048
+
+    issue_manager = IssueManager()
 
     # Browse accepted ciphers and check whether they are blacklisted or whitelisted
     # param:
     #   root_node :      xml element containing ciphers for a ssl/tls version
     #   version :   name of the version assessed like "tls V1.2"
     def filter_cipher(self, root_node, version):
-        issues = []
         blacklisted = ""
         not_whitelisted = ""
         deprecated = ""
@@ -303,34 +67,21 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # Create issue for blacklisted cipher
         if blacklisted:
-            issue = SSLYZE_ISSUES["blacklisted"].copy()
-            issue["Summary"] = version + " - " + issue["Summary"]
-            issue["Description"] += "\n\nBlacklisted encryption algorithms found :\n" + blacklisted
-            issues.append(issue)
+            self.issue_manager.blacklisted_cipher(version, blacklisted)
 
         # Create issue for unauthorized cipher
         if not_whitelisted:
-            issue = SSLYZE_ISSUES["unauthorized"].copy()
-            issue["Summary"] = version + " - " + issue["Summary"]
-            issue["Description"] += "\n\nUnauthorized encryption algorithms found :\n" + not_whitelisted
-            issues.append(issue)
+            self.issue_manager.unauthorized_cipher(version, not_whitelisted)
 
         # Create issue for deprecated cipher
         if deprecated:
-            issue = SSLYZE_ISSUES["deprecated"].copy()
-            issue["Summary"] = version + " - " + issue["Summary"]
-            issue["Description"] += "\n\nDeprecated encryption algorithms found :\n" + deprecated
-            issues.append(issue)
-
-        return issues
+            self.issue_manager.deprecated_cipher(version, deprecated)
 
     # Check if the preferred cipher is the most secure accepted cipher
     # param:
     #   root_node :      xml element containing ciphers for a ssl/tls version
     #   version :   name of the version assessed like "tls V1.2"
     def check_cipher_order(self, root_node, version):
-        issues = []
-
         # Get the name of the preferred cipher
         preferred = root_node.find("preferredCipherSuite")[0].get("name")
 
@@ -361,21 +112,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # Check if the preferred cipher is the best cipher from accepted regarding the white-list
         if safer_cipher_id < pref_id:
-            issue = SSLYZE_ISSUES["no_order"].copy()
-
-            issue["Summary"] = version + " - " + issue["Summary"]
-            issue["Description"] += "\n\nPrefered cipher should be <em>" + safer_cipher + "</em> instead of <em>" \
-                                    + preferred + "</em>"
-            issues.append(issue)
-
-        return issues
+            self.issue_manager.no_cipher_order(version, safer_cipher, preferred)
 
     # Checks the validity of wildcard usage
     # param :
     #   urls : array containing address or commonName or AlternativeName to check
-    # return : array containing issues
     def check_wildcard(self, urls):
-        issues = []
         mixed_wildcard = []
         bad_level_wildcard = []
 
@@ -396,7 +138,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 mixed_wildcard.append(url)
                 continue
 
-            # Try to frind the tld from longest to shortest
+            # Try to find the tld from longest to shortest
             for i in range(-len(url_elements), 0):
                 last_i_elements = url_elements[i:]
                 #    i=-3: ["abcde","co","uk"]
@@ -404,7 +146,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 #    i=-1: ["uk"] etc
 
                 # Rebuild the url
-                candidate = ".".join(last_i_elements) # abcde.co.uk, co.uk, uk
+                candidate = ".".join(last_i_elements)  # abcde.co.uk, co.uk, uk
 
                 if candidate in self.tlds:
                     # Remove the tld from the url
@@ -416,22 +158,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # Create issue for mixed domain with wildcard
         if mixed_wildcard:
-            issue = SSLYZE_ISSUES["wrong_wildcard"].copy()
-            issue["Description"] += "\nIncriminated field are: \n <em>"
-            for url in set(mixed_wildcard):
-                issue["Description"] += url + "\n"
-            issue["Description"] += "</em>"
-            issues.append(issue)
+            self.issue_manager.wrong_wildcard(mixed_wildcard)
 
         if bad_level_wildcard:
-            issue = SSLYZE_ISSUES["domain_wildcard"].copy()
-            issue["Description"] += "\nIncriminated field are: \n <em>"
-            for url in set(bad_level_wildcard):
-                issue["Description"] += url + "\n"
-            issue["Description"] += "</em>"
-            issues.append(issue)
-
-        return issues
+            self.issue_manager.domain_wildcard(bad_level_wildcard)
 
     def parse_sslyze_output(self, output):
 
@@ -444,256 +174,221 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         issues = []
 
-        # Timeout or connection rejected ( invalid target )
-        invalid_target = root.find(".//invalidTarget")
-        if invalid_target is not None:
-            self.sslyze_stderr = invalid_target.get("error")
-            return
+        # Check error
+        for target_error in root.find('.//invalidTargets'):
+            # TODO create error issue
+            # Timeout or connection rejected ( invalid target )
+            self.sslyze_stderr += target_error.get("error") + "\n"
 
-        # Session Renegotiation
-        session_renegotiation = root.find(".//sessionRenegotiation")
-        if session_renegotiation is not None:
-            if session_renegotiation.get("canBeClientInitiated") != "False":
-                issues.append(SSLYZE_ISSUES["Client-initiated Renegotiations"])
+        for result in root.find('.//results'):
+            # Retrieve the IP
+            target_ip = result.get('ip')
 
-            if session_renegotiation.get("isSecure") != "True":
-                issues.append(SSLYZE_ISSUES["Secure Renegotiation"])
+            # Set the target
+            self.issue_manager.new_target(target_ip)
 
-        # Compression
-        compression = root.find(".//compression")
-        if compression is not None and compression.find("compressionMethod") is not None:
-            # Check every compression methods
-            for compression_method in compression:
-                if compression_method.get("isSupported") != "False":
-                    issues.append(SSLYZE_ISSUES["Compression"])
+            # Session Renegotiation
+            session_renegotiation = result.find(".//sessionRenegotiation")
+            if session_renegotiation is not None:
+                if session_renegotiation.get("canBeClientInitiated") != "False":
+                    self.issue_manager.client_renegotiation()
 
-                    # One faulty method is enough
-                    break
+                if session_renegotiation.get("isSecure") != "True":
+                    self.issue_manager.secure_renegotiation()
 
-        # Heartbleed
-        heartbleed = root.find(".//heartbleed/openSslHeartbleed")
-        if heartbleed is not None and heartbleed.get("isVulnerable") != "False":
-            issues.append(SSLYZE_ISSUES["Heartbleed"])
+            # Compression
+            compression = result.find(".//compression")
+            if compression is not None and compression.find("compressionMethod") is not None:
+                # Check every compression methods
+                supported_compression = []
+                for compression_method in compression:
+                    if compression_method.get("isSupported") != "False":
+                        supported_compression.append(compression_method.get('type'))
 
-        # HSTS
-        hsts = root.find(".//hsts/httpStrictTransportSecurity")
-        if hsts is not None and hsts.get("isSupported") == "False":
-            issues.append(SSLYZE_ISSUES["HSTS"])
+                # Create issue if faulty compression is found
+                if supported_compression:
+                    self.issue_manager.insecure_compression(supported_compression)
 
-        # Session Resumption
-        session_resumption_with_session_ids = root.find(".//sessionResumptionWithSessionIDs")
-        session_resumption_with_tls_tickets = root.find(".//sessionResumptionWithTLSTickets")
+            # Heartbleed
+            heartbleed = result.find(".//heartbleed/openSslHeartbleed")
+            if heartbleed is not None and heartbleed.get("isVulnerable") != "False":
+                self.issue_manager.heartbleed()
 
-        if session_resumption_with_session_ids is not None:
-            if session_resumption_with_session_ids.get("isSupported") != "True":
-                issues.append(SSLYZE_ISSUES["Session ressumption with session IDs"])
+            # HSTS
+            hsts = result.find(".//hsts/httpStrictTransportSecurity")
+            if hsts is not None and hsts.get("isSupported") == "False":
+                self.issue_manager.no_hsts()
 
-        if session_resumption_with_tls_tickets is not None:
-            if session_resumption_with_tls_tickets.get("isSupported") != "True":
-                issues.append(SSLYZE_ISSUES["Session ressumption with TLS session tickets"])
+            # Session Resumption
+            session_resumption_with_session_ids = result.find(".//sessionResumptionWithSessionIDs")
+            session_resumption_with_tls_tickets = result.find(".//sessionResumptionWithTLSTickets")
 
-        # Certificate - Content
-        public_key_size = root.find(".//publicKeySize")
-        if public_key_size is not None:
-            key_size = int(public_key_size.text.split(" ")[0])
-            if key_size < 2048:
-                issue = SSLYZE_ISSUES["Public key size"]
-                issue["Definition"] += "\n\nActually, the public key size found is " + str(key_size)
-                issues.append(issue)
+            if session_resumption_with_session_ids is not None:
+                if session_resumption_with_session_ids.get("isSupported") != "True":
+                    self.issue_manager.session_resumption_id()
 
-        # Check if the certificate is expired
-        not_after = root.find(".//validity/notAfter")
-        if not_after is not None:
-            date = not_after.text
-            cert_date = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
-            if cert_date < time.gmtime():
-                issue = SSLYZE_ISSUES["Expired Validity date"]
-                issue["Description"] += "\n\nActually, the validity date found is " + date
-                issues.append(issue)
+            if session_resumption_with_tls_tickets is not None:
+                if session_resumption_with_tls_tickets.get("isSupported") != "True":
+                    self.issue_manager.session_resumption_ticket()
 
-        # Check if the certificate is before being valid
-        not_before = root.find(".//validity/notBefore")
-        if not_before is not None:
-            date = not_before.text
-            cert_date = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
-            if cert_date > time.gmtime():
-                issue = SSLYZE_ISSUES["Before Validity date"]
-                issue["Description"] += "\n\nActually, the validity date begins at " + date
-                issues.append(issue)
+            # Check if ocspStapling is activated
+            ocsp = result.find(".//ocspStapling")
+            if ocsp is None or ocsp.get("isSupported") == "False":
+                self.issue_manager.no_ocsp_stapling()
 
-        # Check if ocspStapling is activated
-        ocsp = root.find(".//ocspStapling")
-        if ocsp is None or ocsp.get("isSupported") == "False":
-            issue = SSLYZE_ISSUES["no_ocsp"]
-            issues.append(issue)
+            cert_hash = None
+            signed_by = None
 
-        # Check if the certificate is enforced and sslyze got results
-        if "certinfo" in self.configuration and "exception" not in root.find(".//certinfo"):
-            # Certificate - Trust:
-            hostname_validation = root.find(".//hostnameValidation")
-            try:
-                common_name = root.find(".//certificate[@position='leaf']/subject/commonName").text
-            except AttributeError as e:
-                common_name = "Error Cloud Not get the Certificate Info"
+            # Check if the certificate is enforced and sslyze got results
+            if "certinfo" in self.configuration and "exception" not in result.find(".//certinfo"):
+                # Certificate - Content
+                public_key_size = result.find(".//publicKeySize")
+                if public_key_size is not None:
+                    key_size = int(public_key_size.text.split(" ")[0])
+                    if key_size < self.MINIMUM_PUB_KEY_SIZE:
+                        self.issue_manager.low_key_size(self.MINIMUM_PUB_KEY_SIZE, str(key_size))
 
-            if hostname_validation is not None:
-                if hostname_validation.get("certificateMatchesServerHostname") != "True":
-                    issue = SSLYZE_ISSUES["Hostname validation"]
+                # Get current time used for verification
+                today = datetime.date.today().strftime("%b %d %H:%M:%S %Y GMT")
 
-                    # Add common name from certificate if existing
-                    if common_name:
-                        issue["Description"] += "\n\nActually, the commonName for the certificate is " + common_name
+                # Check if the certificate is expired
+                not_after = result.find(".//validity/notAfter")
+                if not_after is not None:
+                    date = not_after.text
+                    cert_date = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
+                    if cert_date < time.gmtime():
+                        self.issue_manager.certificate_expired(date, today)
 
-                    issues.append(issue)
+                # Check if the certificate is before being valid
+                not_before = result.find(".//validity/notBefore")
+                if not_before is not None:
+                    date = not_before.text
+                    cert_date = time.strptime(date, "%b %d %H:%M:%S %Y GMT")
+                    if cert_date > time.gmtime():
+                        self.issue_manager.certificate_not_valid_yet(date, today)
 
-            path_validations = root.findall(".//pathValidation")
+                try:
+                    common_name = result.find(".//certificate[@position='leaf']/subject/commonName").text
+                except AttributeError as e:
+                    common_name = "Error Cloud Not get the Certificate Info"
 
-            if path_validations:
-                bad_cert_validation = ""
-                for path_validation in path_validations:
-                    validation_result = path_validation.get("validationResult")
-                    if validation_result != "ok":
-                        # Check if only the custom CA matters
-                        if (self.only_custom_CA and path_validation.get("usingTrustStore") == "Custom --ca_file") \
-                                or not self.only_custom_CA:
-                            # Get possible error message
-                            error_result = path_validation.get("error")
+                # Build a list of valid hostname
+                names = [common_name]
 
-                            bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
-                                                   " : " + str(error_result or validation_result) + "\n"
+                # Get alternativeNames
+                alternative_names = result.find(".//certificate[@position='leaf']"
+                                                "/extensions/X509v3SubjectAlternativeName/DNS")
+                if alternative_names is not None:
+                    for list_entry in alternative_names:
+                        names.append(list_entry.text)
 
-                if bad_cert_validation:
-                    # Check if the grey-false positive from Mozilla due to extra cert is important
-                    ignore_nss = self.configuration.get("ignore_extra_cert")
-                    if bad_cert_validation == "Mozilla NSS : unable to get local issuer certificate\n" and ignore_nss:
-                        issue = SSLYZE_ISSUES["extra_cert"]
-                        issues.append(issue)
-                    else:
-                        issue = SSLYZE_ISSUES["Certificate validation"]
-                        issue["Description"] += "\n\nBad certificate validation for the following store(s) : \n" \
-                                                + bad_cert_validation
-                        issues.append(issue)
-        else:
-            # Check if SSLyze couldn't get the certificate
-            try:
-                if "exception" in root.find(".//certinfo"):
-                    issue = SSLYZE_ISSUES["get_no_ca"]
-                    issue["Description"] += root.find(".//certinfo").get("exception")
-                    issues.append(issue)
-            except Exception as e:
-                # Raise info
-                issue = SSLYZE_ISSUES["no_ca"]
-                issues.append(issue)
+                # Certificate hostname validation
+                hostname_validation = result.find(".//hostnameValidation")
+                if hostname_validation is not None:
+                    if hostname_validation.get("certificateMatchesServerHostname") != "True":
+                        self.issue_manager.no_hostname_validation(self.target, names)
 
-        # SSL V2 Cipher Suites
-        sslv2 = root.find(".//sslv2")
-        if sslv2 is not None and sslv2.get("isProtocolSupported") == "True":
-            accepted = sslv2.find("acceptedCipherSuites")
-            preferred = sslv2.find("preferredCipherSuite")
+                # Check wildcard for CommonName and AlternativeNames
+                self.check_wildcard(names)
 
-            if accepted is not None or preferred is not None:
-                if list(accepted) or list(preferred):
+                # Get the certificate hash
+                cert_hash = result.find(".//certificate[@position='leaf']").get('sha1Fingerprint')
 
-                    preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
-                    accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
+                # Get the organization that certified the certificate
+                signed_by = result.find(".//certificate[@position='leaf']/issuer/organizationName").text
 
-                    issue = SSLYZE_ISSUES["SSLV2"]
-                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + \
-                                            "/ ".join(preferred_ciphers) + ", " + ", ".join(accepted_ciphers)
-                    issues.append(issue)
+                # Check certificate validation from CA
+                path_validations = result.findall(".//pathValidation")
+                if path_validations:
+                    bad_cert_validation = ""
+                    for path_validation in path_validations:
+                        validation_result = path_validation.get("validationResult")
+                        if validation_result != "ok":
+                            # Check if only the custom CA matters
+                            if (self.only_custom_CA and path_validation.get("usingTrustStore") == "Custom --ca_file") \
+                                    or not self.only_custom_CA:
+                                # Get possible error message
+                                error_result = path_validation.get("error")
 
-        # SSL V3 Cipher Suites
-        sslv3 = root.find(".//sslv3")
-        if sslv3 is not None and sslv3.get("isProtocolSupported") == "True":
-            accepted = sslv3.find("acceptedCipherSuites")
-            preferred = sslv3.find("preferredCipherSuite")
+                                bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
+                                                       " : " + str(error_result or validation_result) + "\n"
 
-            if accepted is not None or preferred is not None:
-                if list(accepted) or list(preferred):
+                    if bad_cert_validation:
+                        # Check if the grey-false positive from Mozilla due to extra cert is important
+                        ignore_nss = self.configuration.get("ignore_extra_cert")
+                        if bad_cert_validation == "Mozilla NSS : unable to get local issuer certificate\n" \
+                                and ignore_nss:
+                            self.issue_manager.extra_cert()
+                        else:
+                            self.issue_manager.certificate_not_valid(bad_cert_validation)
+            else:
+                # Check if SSLyze couldn't get the certificate
+                try:
+                    if "exception" in result.find(".//certinfo"):
+                        error = result.find(".//certinfo").get("exception")
+                        self.issue_manager.certificate_not_found(error)
+                except Exception as e:
+                    # Raise info
+                    self.issue_manager.certificate_not_checked()
 
-                    preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
-                    accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
+            # TODO refactor ssl/tls check
+            # SSL V2 Cipher Suites
+            sslv2 = result.find(".//sslv2")
+            if sslv2 is not None and sslv2.get("isProtocolSupported") == "True":
+                accepted = sslv2.find("acceptedCipherSuites")
+                preferred = sslv2.find("preferredCipherSuite")
 
-                    issue = SSLYZE_ISSUES["SSLV3_notempty"]
-                    issue["Description"] += "\n\nList of accepted/preferred cipher suites : " + \
-                                            ", ".join(preferred_ciphers) + "/ " + ", ".join(accepted_ciphers)
-                    issues.append(issue)
+                if accepted is not None or preferred is not None:
+                    if list(accepted) or list(preferred):
 
-        # TLS V1 Cipher Suites
-        tlsv1 = root.find(".//tlsv1")
-        if tlsv1 is not None and tlsv1.get("isProtocolSupported") == "True":
-            issues.extend(self.filter_cipher(tlsv1, "TLS 1"))
+                        preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
+                        accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
 
-            if self.enforce_order == "True":
-                issues.extend(self.check_cipher_order(tlsv1, "TLS 1"))
+                        self.issue_manager.support_sslv2(preferred_ciphers, accepted_ciphers)
 
-        # TLS V1.1 Cipher Suites
-        tlsv1_1 = root.find(".//tlsv1_1")
-        if tlsv1_1 is not None and tlsv1_1.get("isProtocolSupported") == "True":
-            issues.extend(self.filter_cipher(tlsv1_1, "TLS 1.1"))
+            # SSL V3 Cipher Suites
+            sslv3 = result.find(".//sslv3")
+            if sslv3 is not None and sslv3.get("isProtocolSupported") == "True":
+                accepted = sslv3.find("acceptedCipherSuites")
+                preferred = sslv3.find("preferredCipherSuite")
 
-            if self.enforce_order == "True":
-                issues.extend(self.check_cipher_order(tlsv1_1, "TLS 1.1"))
+                if accepted is not None or preferred is not None:
+                    if list(accepted) or list(preferred):
 
-        # TLS V1.2 Cipher Suites
-        tlsv1_2 = root.find(".//tlsv1_2")
-        if tlsv1_2 is not None and tlsv1_2.get("isProtocolSupported") == "True":
-            issues.extend(self.filter_cipher(tlsv1_2, "TLS 1.2"))
+                        preferred_ciphers = [cipher.get("name") for cipher in list(preferred)]
+                        accepted_ciphers = [cipher.get("name") for cipher in list(accepted)]
 
-            if self.enforce_order == "True":
-                issues.extend(self.check_cipher_order(tlsv1_2, "TLS 1.2"))
-        else:
-            issues.append(SSLYZE_ISSUES["TLSV1_2_not_supported"])
+                        self.issue_manager.support_sslv3(preferred_ciphers, accepted_ciphers)
 
-        cert_hash = None
-        signed_by = None
+            # TLS V1 Cipher Suites
+            tlsv1 = result.find(".//tlsv1")
+            if tlsv1 is not None and tlsv1.get("isProtocolSupported") == "True":
+                self.filter_cipher(tlsv1, "TLS 1")
 
-        # Check certificate if the verification is enforced
-        if "certinfo" in self.configuration:
-            # Get alternativeNames
-            alternative_names = root.find(".//certificate[@position='leaf']/extensions/X509v3SubjectAlternativeName/DNS")
+                if self.enforce_order == "True":
+                    self.check_cipher_order(tlsv1, "TLS 1")
 
-            # Build a list to verify
-            names = [common_name]
+            # TLS V1.1 Cipher Suites
+            tlsv1_1 = result.find(".//tlsv1_1")
+            if tlsv1_1 is not None and tlsv1_1.get("isProtocolSupported") == "True":
+                self.filter_cipher(tlsv1_1, "TLS 1.1")
 
-            if alternative_names is not None:
-                for list_entry in alternative_names:
-                    names.append(list_entry.text)
+                if self.enforce_order == "True":
+                    self.check_cipher_order(tlsv1_1, "TLS 1.1")
 
-            # Check wildcard for CommonName and AlternativeNames
-            issues.extend(self.check_wildcard(names))
+            # TLS V1.2 Cipher Suites
+            tlsv1_2 = result.find(".//tlsv1_2")
+            if tlsv1_2 is not None and tlsv1_2.get("isProtocolSupported") == "True":
+                self.filter_cipher(tlsv1_2, "TLS 1.2")
 
-            # Get the certificate hash
-            cert_hash = root.find(".//certificate[@position='leaf']").get('sha1Fingerprint')
+                if self.enforce_order == "True":
+                    self.check_cipher_order(tlsv1_2, "TLS 1.2")
+            else:
+                self.issue_manager.no_tls_v1_2()
 
-            # Get the organization that certified the certificate
-            signed_by = root.find(".//certificate[@position='leaf']/issuer/organizationName").text
-
-        # Retrieve the IP
-        target_ip = root.find(".//target").get('ip')
-
-        # For each issue add the hostname scanned in the URL field:
-        for issue in issues:
-            issue["URLs"] = [{"URL": self.target, "Ip": target_ip, "CA": cert_hash, "issuer": signed_by}]
-
-            # Compute the id of issue
-            summary = issue["Summary"] if ("Summary" in issue) else ""
-            cwe_id = issue["Classification"]["cwe_id"] \
-                if "Classification" in issue and "cwe_id" in issue["Classification"] else ""
-            pre_id = None
-
-            # Treat case issue is dependent to certificate
-            if issue.get('issue_type') == "certificate":
-                pre_id = summary + ":" + str(cwe_id) + ":" + cert_hash
-            elif issue.get('issue_type') == 'configuration':
-                pre_id = summary + ":" + str(cwe_id) + ":" + self.target
-
-            # Compute the id
-            if pre_id:
-                hash_id = hashlib.sha256(pre_id.encode())
-                issue['Id'] = hash_id.hexdigest()
-
-        return issues
+            # Prepare information to add for the target:
+            infos = {"URL": self.target, "IP": target_ip, "CA": cert_hash, "issuer": signed_by}
+            self.issue_manager.add_target_info(infos)
 
     def _check_options(self):
         args = []
@@ -816,6 +511,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
         else:
             self.only_custom_CA = False
 
+        # Check if SSLyze must scan every A record for given hostname
+        if "resolve_ip" in self.configuration:
+            self.resolve_ip = self.configuration["resolve_ip"]
+        else:
+            self.resolve_ip = False
+
     def do_start(self):
 
         # Try to find sslyze with the given configuration
@@ -851,7 +552,22 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         args = self._check_options()
         args += ["--xml_out", self.xml_output]
-        args += [self.target]
+
+        # Check if the plugin needs to pull A records from target
+        if self.resolve_ip:
+            # Check if the module is installed
+            try:
+                import dns.resolver
+
+                answer = dns.resolver.query(self.target, 'A')
+
+                for ip in answer:
+                    target = "%s{%s}" % (self.target, ip)
+                    args += [target]
+            except:
+                raise Exception("Cannot load dnspython library, can't resolve ip from target")
+        else:
+            args += [self.target]
 
         self.spawn(sslyze_path, args)
 
@@ -865,7 +581,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
         if self.stopping and status == 9:
             self.report_finish("STOPPED")
         elif status == 0:
-            issues = self.parse_sslyze_output(self.xml_output)
+            self.parse_sslyze_output(self.xml_output)
+
+            issues = self.issue_manager.generate_issues()
+
             self.report_issues(issues)
 
             self._save_artifacts()
