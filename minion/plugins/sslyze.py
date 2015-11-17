@@ -311,12 +311,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
                                 error_result = path_validation.get("error")
 
                                 bad_cert_validation += str(path_validation.get("usingTrustStore")) + \
-                                                       " : " + str(error_result or validation_result) + "\n"
+                                                       " : " + str(error_result or validation_result) + "<br/>"
 
                     if bad_cert_validation:
                         # Check if the grey-false positive from Mozilla due to extra cert is important
                         ignore_nss = self.configuration.get("ignore_extra_cert")
-                        if bad_cert_validation == "Mozilla NSS : unable to get local issuer certificate\n" \
+                        if bad_cert_validation == "Mozilla NSS : unable to get local issuer certificate<br/>" \
                                 and ignore_nss:
                             self.issue_manager.extra_cert()
                         else:
