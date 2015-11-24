@@ -391,7 +391,7 @@ class IssueManager:
         for item in content:
             for version in item:
                 (safer_cipher, preferred_cipher) = item[version]
-                precisions["Extra"] += "With %s : %s instead of current %s<br/>" % \
+                precisions["Extra"] += "With %s : %s should be preferred instead of current %s<br/>" % \
                                        (version, safer_cipher, preferred_cipher)
 
         return precisions
