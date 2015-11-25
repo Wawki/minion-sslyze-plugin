@@ -343,6 +343,9 @@ class IssueManager:
         self.add_issues("SSLv3", (preferred_cipher, accepted_ciphers), target)
 
     def handler_ssl_supported(self, content):
+        # extract content
+        content = content[0]
+
         # Format parameters
         (preferred_cipher, accepted_ciphers) = content
 
@@ -405,6 +408,9 @@ class IssueManager:
         self.add_issues("domain_wildcard", domains, target)
 
     def handler_wildcard_issue(self, content):
+        # extract content
+        content = content[0]
+
         precisions = dict()
         precisions["Extra"] = "Wildcard issue with following domains:<br/>"
 
@@ -423,6 +429,9 @@ class IssueManager:
         self.add_issues("Compression", compressions, target)
 
     def handler_compression_issue(self, content):
+        # extract content
+        content = content[0]
+
         precisions = dict()
         precisions["Extra"] = "Compression available with following methods:<br/>"
 
@@ -451,6 +460,9 @@ class IssueManager:
         self.add_issues("Public key size", (min_size, current_size), target)
 
     def handler_low_key_size(self, content):
+        # extract content
+        content = content[0]
+
         # Format parameters
         (min_size, current_size) = content
 
@@ -464,6 +476,9 @@ class IssueManager:
         self.add_issues("Expired Validity date", (validity_date, current_date), target)
 
     def handler_certificate_expired(self, content):
+        # extract content
+        content = content[0]
+
         # Format parameters
         (validity_date, current_date) = content
 
@@ -477,6 +492,9 @@ class IssueManager:
         self.add_issues("Before Validity date", (validity_date, current_date), target)
 
     def handler_certificate_not_valid_yet(self, content):
+        # extract content
+        content = content[0]
+
         # Format parameters
         (validity_date, current_date) = content
 
@@ -490,11 +508,14 @@ class IssueManager:
         self.add_issues("Hostname validation", (hostname, valid_names), target)
 
     def handler_hostname_validation(self, content):
+        # extract content
+        content = content[0]
+
         # Format parameters
         (hostname, valid_names) = content
 
         precisions = dict()
-        precisions["Extra"] = "The hostname is %s and the certificate is valid only with the following domains:<br/>" \
+        precisions["Extra"] = "The hostname is %s but the certificate is valid only with the following domains:<br/>" \
                               % hostname
 
         # Remove duplicate
@@ -512,6 +533,9 @@ class IssueManager:
         self.add_issues("Certificate validation", cert_error, target)
 
     def handler_certificate_not_valid(self, content):
+        # extract content
+        content = content[0]
+
         # Format parameters
         cert_error = content
 
@@ -525,6 +549,9 @@ class IssueManager:
         self.add_issues("get_no_ca", error, target)
 
     def handler_certificate_not_found(self, content):
+        # extract content
+        content = content[0]
+
         # Format parameters
         cert_error = content
 
