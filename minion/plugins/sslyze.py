@@ -239,8 +239,14 @@ class SSLyzePlugin(ExternalProcessPlugin):
             cert_hash = None
             signed_by = None
 
+            # Get certificate analysis error
+            try:
+                cert_error = result.find(".//certinfo").get("exception")
+            except:
+                cert_error = None
+
             # Check if the certificate is enforced and sslyze got results
-            if "certinfo" in self.configuration and "exception" not in result.find(".//certinfo"):
+            if "certinfo" in self.configuration and not cert_error:
                 # Certificate - Content
                 public_key_size = result.find(".//publicKeySize")
                 if public_key_size is not None:
@@ -321,15 +327,13 @@ class SSLyzePlugin(ExternalProcessPlugin):
                             self.issue_manager.extra_cert()
                         else:
                             self.issue_manager.certificate_not_valid(bad_cert_validation)
+            # Check if SSLyze couldn't get the certificate
+            elif cert_error:
+                self.issue_manager.certificate_not_found(cert_error)
+
+            # Raise info
             else:
-                # Check if SSLyze couldn't get the certificate
-                try:
-                    if "exception" in result.find(".//certinfo"):
-                        error = result.find(".//certinfo").get("exception")
-                        self.issue_manager.certificate_not_found(error)
-                except Exception as e:
-                    # Raise info
-                    self.issue_manager.certificate_not_checked()
+                self.issue_manager.certificate_not_checked()
 
             # TODO refactor ssl/tls check
             # SSL V2 Cipher Suites
