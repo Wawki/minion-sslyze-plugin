@@ -659,7 +659,8 @@ class IssueManager:
             pre_id = summary + ":" + str(cwe_id) + ":" + cert_hash
         elif issue.get('issue_type') == 'configuration':
             try:
-                target = issue.get("URLs")[0].get("url").split(" - ")[0]
+                # Get the url of target and ignore the IP
+                target = issue.get("URLs")[0].get("URL").split(" - ")[0]
             except:
                 target = ""
 
