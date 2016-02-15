@@ -261,6 +261,28 @@ class IssueManager:
                                "OCSP Stapling is used for checking the revocation status of existing certificate "
                                "in order to quicken the TLS hand-check",
                 "issue_type": ""
+            },
+            "chain_order": {
+                "Summary": "The chain certificate is not in the correct order",
+                "Severity": "High",
+                "Description":  "The certificate chain sent by the server is in an incorrect order. "
+                                "This could affects browsers with limited resources like smartphones.",
+                "Classification": {
+                    "cwe_id": "327",
+                    "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+                },
+                "issue_type": "configuration"
+            },
+            "signed_sha1": {
+                "Summary": "Certificate signed with SHA-1",
+                "Severity": "Medium",
+                "Description":  "The certificate is signed with SHA-1. This signature algorithm is deprecated and "
+                                "you should update your certificate with a better signature algorithm like SHA-2.",
+                "Classification": {
+                    "cwe_id": "327",
+                    "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+                },
+                "issue_type": "configuration"
             }
         }
 
@@ -563,6 +585,14 @@ class IssueManager:
     # Certificate not checked
     def certificate_not_checked(self, target=None):
         self.add_issues("no_ca", None, target)
+
+    # Certificate chain in incorrect order
+    def wrong_chain_order(self, target=None):
+        self.add_issues("chain_order", None, target)
+
+    # Certificate chain in incorrect order
+    def signed_with_sha1(self, target=None):
+        self.add_issues("signed_sha1", None, target)
 
     # Fill issue
     def fill_issue_with_info(self, issue, content, target_info):

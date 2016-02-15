@@ -16,10 +16,10 @@ from issues import IssueManager
 
 class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_NAME = "SSlyze"
-    PLUGIN_VERSION = "0.12.5"
+    PLUGIN_VERSION = "0.13.2"
     PLUGIN_WEIGHT = "light"
 
-    SSLyze_NAME = "sslyze.py"
+    SSLyze_NAME = "sslyze_cli.py"
 
     MINIMUM_PUB_KEY_SIZE = 2048
 
@@ -297,6 +297,16 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 # Check wildcard for CommonName and AlternativeNames
                 self.check_wildcard(names)
 
+                # Check if the certificate chain is in the correct order
+                chain_order = result.find(".//certificateChain").get('isChainOrderValid')
+                if chain_order != "True":
+                    self.issue_manager.wrong_chain_order()
+
+                # Check if the certificate is signed with sha1
+                signed_with_sha1 = result.find(".//certificateChain").get('hasSha1SignedCertificate')
+                if signed_with_sha1 == "True":
+                    self.issue_manager.signed_with_sha1()
+
                 # Get the certificate hash
                 cert_hash = result.find(".//certificate[@position='leaf']").get('sha1Fingerprint')
 
@@ -426,7 +436,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # PluginCertInfo
         if "certinfo" in self.configuration:
-            args += ["--certinfo", self.configuration["certinfo"]]
+            args += ["--certinfo_%s" % self.configuration["certinfo"]]
 
         # PluginHeartbleed
         if "heartbleed" in self.configuration:
