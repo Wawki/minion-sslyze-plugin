@@ -264,7 +264,7 @@ class IssueManager:
             },
             "chain_order": {
                 "Summary": "The chain certificate is not in the correct order",
-                "Severity": "High",
+                "Severity": "Medium",
                 "Description":  "The certificate chain sent by the server is in an incorrect order. "
                                 "This could affects browsers with limited resources like smartphones.",
                 "Classification": {
@@ -275,7 +275,7 @@ class IssueManager:
             },
             "signed_sha1": {
                 "Summary": "Certificate signed with SHA-1",
-                "Severity": "Medium",
+                "Severity": "Low",
                 "Description":  "The certificate is signed with SHA-1. This signature algorithm is deprecated and "
                                 "you should update your certificate with a better signature algorithm like SHA-2.",
                 "Classification": {
