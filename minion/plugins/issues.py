@@ -273,11 +273,12 @@ class IssueManager:
                 },
                 "issue_type": "configuration"
             },
-            "signed_sha1": {
+            "sha1_leaf_cert": {
                 "Summary": "Certificate signed with SHA-1",
                 "Severity": "Low",
-                "Description":  "The certificate is signed with SHA-1. This signature algorithm is deprecated and "
-                                "you should update your certificate with a better signature algorithm like SHA-2.",
+                "Description":  "The certificate for this domain is signed with SHA-1. This signature algorithm "
+                                "is deprecated and you should update your certificate with "
+                                "a better signature algorithm like SHA-2 because soon browsers won't alloy it.",
                 "Classification": {
                     "cwe_id": "327",
                     "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
@@ -592,7 +593,7 @@ class IssueManager:
 
     # Certificate chain in incorrect order
     def signed_with_sha1(self, target=None):
-        self.add_issues("signed_sha1", None, target)
+        self.add_issues("sha1_leaf_cert", None, target)
 
     # Fill issue
     def fill_issue_with_info(self, issue, content, target_info):

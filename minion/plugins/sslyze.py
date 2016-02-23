@@ -305,7 +305,11 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 # Check if the certificate is signed with sha1
                 signed_with_sha1 = result.find(".//certificateChain").get('hasSha1SignedCertificate')
                 if signed_with_sha1 == "True":
-                    self.issue_manager.signed_with_sha1()
+                    # Check only the leaf certificate for the moment
+                    signature_algo = result.find(".//certificate[@position='leaf']/signatureAlgorithm").text
+
+                    if "sha1" in signature_algo:
+                        self.issue_manager.signed_with_sha1()
 
                 # Get the certificate hash
                 cert_hash = result.find(".//certificate[@position='leaf']").get('sha1Fingerprint')
