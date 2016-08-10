@@ -16,12 +16,13 @@ from issues import IssueManager
 
 class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_NAME = "SSlyze"
-    PLUGIN_VERSION = "0.13.2"
+    PLUGIN_VERSION = "0.13.6"
     PLUGIN_WEIGHT = "light"
 
     SSLyze_NAME = "sslyze_cli.py"
 
-    MINIMUM_PUB_KEY_SIZE = 2048
+    MINIMUM_PUB_KEY_SIZE_RSA = 2048
+    MINIMUM_PUB_KEY_SIZE_ECCD = 256
 
     issue_manager = IssueManager()
 
@@ -29,10 +30,12 @@ class SSLyzePlugin(ExternalProcessPlugin):
     # param:
     #   root_node :      xml element containing ciphers for a ssl/tls version
     #   version :   name of the version assessed like "tls V1.2"
-    def filter_cipher(self, root_node, version):
+    def filter_cipher(self, root_node, version, need_FS=False):
         blacklisted = ""
         not_whitelisted = ""
         deprecated = ""
+
+        fs_counter = 0
 
         # Get valid cipher suite for the version
         accepted = root_node.find("acceptedCipherSuites")
@@ -65,6 +68,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 else:
                     deprecated += ", " + cipher_name
 
+            # Check if at least one filter supports Forward Secrecy
+            if any(dp_c in cipher_name for dp_c in self.forward_sec_cipher):
+                fs_counter += 1
+
         # Create issue for blacklisted cipher
         if blacklisted:
             self.issue_manager.blacklisted_cipher(version, blacklisted)
@@ -76,6 +83,10 @@ class SSLyzePlugin(ExternalProcessPlugin):
         # Create issue for deprecated cipher
         if deprecated:
             self.issue_manager.deprecated_cipher(version, deprecated)
+
+        # Create issue if no cipher supports Forward Secrecy
+        if fs_counter == 0 and need_FS:
+            self.issue_manager.no_ats_valid({"support_fs": False})
 
     # Check if the preferred cipher is the most secure accepted cipher
     # param:
@@ -251,8 +262,17 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 public_key_size = result.find(".//publicKeySize")
                 if public_key_size is not None:
                     key_size = int(public_key_size.text.split(" ")[0])
-                    if key_size < self.MINIMUM_PUB_KEY_SIZE:
-                        self.issue_manager.low_key_size(self.MINIMUM_PUB_KEY_SIZE, str(key_size))
+
+                    # Check conformance to ATS
+                    pub_key_algo = result.find(".//publicKeyAlgorithm")
+                    if pub_key_algo is not None:
+                        # Case RSA
+                        if pub_key_algo.text == "rsaEncryption" and key_size < self.MINIMUM_PUB_KEY_SIZE_RSA:
+                            self.issue_manager.no_ats_valid({"pub_key_size": str(key_size), "pub_key_algo": "RSA"})
+                            self.issue_manager.low_key_size(self.MINIMUM_PUB_KEY_SIZE_RSA, str(key_size))
+                        elif pub_key_algo.text == "id-ecPublicKey" and key_size < self.MINIMUM_PUB_KEY_SIZE_ECCD:
+                            self.issue_manager.no_ats_valid({"pub_key_size": str(key_size), "pub_key_algo": "ECDSA"})
+                            self.issue_manager.low_key_size(self.MINIMUM_PUB_KEY_SIZE_ECCD, str(key_size))
 
                 # Get current time used for verification
                 today = datetime.date.today().strftime("%b %d %H:%M:%S %Y GMT")
@@ -397,12 +417,13 @@ class SSLyzePlugin(ExternalProcessPlugin):
             # TLS V1.2 Cipher Suites
             tlsv1_2 = result.find(".//tlsv1_2")
             if tlsv1_2 is not None and tlsv1_2.get("isProtocolSupported") == "True":
-                self.filter_cipher(tlsv1_2, "TLS 1.2")
+                self.filter_cipher(tlsv1_2, "TLS 1.2", True)
 
                 if self.enforce_order == "True":
                     self.check_cipher_order(tlsv1_2, "TLS 1.2")
             else:
                 self.issue_manager.no_tls_v1_2()
+                self.issue_manager.no_ats_valid({"support_tls_v1_2": False})
 
             # Prepare information to add for the target:
             infos = {"URL": self.target, "IP": target_ip, "CA": cert_hash, "issuer": signed_by}
@@ -499,6 +520,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
         self.blacklist_cipher = []
         self.whitelist_cipher = []
         self.deprecated_cipher = []
+        self.forward_sec_cipher = []
 
         self.enforce_order = "False"
         self.tlds = []
@@ -509,6 +531,9 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         if "whitelist_cipher" in self.configuration:
             self.whitelist_cipher = self.configuration["whitelist_cipher"].split(':')
+
+        if "forward_sec_cipher" in self.configuration:
+            self.forward_sec_cipher = self.configuration["forward_sec_cipher"].split(':')
 
         if "enforce_order" in self.configuration:
             self.enforce_order = self.configuration["enforce_order"]

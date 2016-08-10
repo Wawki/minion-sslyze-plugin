@@ -275,15 +275,29 @@ class IssueManager:
             },
             "sha1_leaf_cert": {
                 "Summary": "Certificate signed with SHA-1",
-                "Severity": "Low",
+                "Severity": "High",
                 "Description":  "The certificate for this domain is signed with SHA-1. This signature algorithm "
-                                "is deprecated and you should update your certificate with "
-                                "a better signature algorithm like SHA-2 because soon browsers won't alloy it.",
+                                "is deprecated and will be forbidden in 2017. "
+                                "You need to update your certificate with a better signature algorithm like SHA-2 "
+                                "because soon browsers won't alloy it.",
                 "Classification": {
                     "cwe_id": "327",
                     "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
                 },
-                "issue_type": "configuration"
+                "issue_type": "certificate"
+            },
+            "no_ats": {
+                "Summary": "Domain not compatible with ATS",
+                "Severity": "High",
+                "Description":  "The domain doesn't comply with Apple App Transport Security requirements "
+                                "on the following points :"
+                                ,
+                "Classification": {
+                    "cwe_id": "327",
+                    "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+                },
+                "issue_type": "configuration",
+                "handler": self.handler_ats_not_valid
             }
         }
 
@@ -583,6 +597,28 @@ class IssueManager:
 
         return precisions
 
+    def handler_ats_not_valid(self, content):
+        precisions = dict()
+        precisions["Extra"] = ""
+
+        # extract content
+        for item in content:
+            key = item.keys()[0]
+            value = item.get(key)
+
+            if key == "support_tls_v1_2":
+                precisions["Extra"] += "TLS v1.2 is not supported <br/>"
+
+            elif key in ["pub_key_size", "pub_key_algo"]:
+                # {"pub_key_size": str(key_size), "pub_key_algo": "ECDSA"}
+                precisions["Extra"] += "The size of the {algo} public key is too small: {size} bits <br/>"\
+                    .format(algo=item.get("pub_key_algo"), size=item.get("pub_key_size"))
+
+            elif key == "support_fs":
+                precisions["Extra"] += "None of the ciphers proposed for TLS v1.2 supports Perfect Forward Secrecy<br/>"
+
+        return precisions
+
     # Certificate not checked
     def certificate_not_checked(self, target=None):
         self.add_issues("no_ca", None, target)
@@ -594,6 +630,9 @@ class IssueManager:
     # Certificate chain in incorrect order
     def signed_with_sha1(self, target=None):
         self.add_issues("sha1_leaf_cert", None, target)
+
+    def no_ats_valid(self, items, target=None):
+        self.add_issues("no_ats", items, target)
 
     # Fill issue
     def fill_issue_with_info(self, issue, content, target_info):
