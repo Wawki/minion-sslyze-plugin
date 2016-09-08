@@ -260,7 +260,7 @@ class IssueManager:
                 "Description": "The server does not provides OCSP Stapling for its certificate. "
                                "OCSP Stapling is used for checking the revocation status of existing certificate "
                                "in order to quicken the TLS hand-check",
-                "issue_type": ""
+                "issue_type": "configuration"
             },
             "chain_order": {
                 "Summary": "The chain certificate is not in the correct order",
@@ -604,7 +604,6 @@ class IssueManager:
         # extract content
         for item in content:
             key = item.keys()[0]
-            value = item.get(key)
 
             if key == "support_tls_v1_2":
                 precisions["Extra"] += "TLS v1.2 is not supported <br/>"
@@ -616,6 +615,8 @@ class IssueManager:
 
             elif key == "support_fs":
                 precisions["Extra"] += "None of the ciphers proposed for TLS v1.2 supports Perfect Forward Secrecy<br/>"
+            elif key == "sha1":
+                precisions["Extra"] += "The certificate is signed with SHA-1<br/>"
 
         return precisions
 
@@ -719,6 +720,11 @@ class IssueManager:
             if "Classification" in issue and "cwe_id" in issue["Classification"] else ""
         pre_id = None
 
+        # FIXME if two scans of two targets raise an issue about the same certificate, the extra info will be
+        # overwritten by the last result
+        # maybe this will be fixed by a change in data model
+        # Disclaimers : I know it's bad to keep commented code in source version project, but I won't forget it
+        """
         # Treat case issue is dependent to certificate
         if issue.get('issue_type') == "certificate":
             try:
@@ -735,6 +741,23 @@ class IssueManager:
                 target = ""
 
             pre_id = summary + ":" + str(cwe_id) + ":" + target
+        """
+        # Treat case issue is dependent to certificate
+        if issue.get('issue_type') == "certificate":
+            try:
+                cert_hash = issue.get("URLs")[0].get("CA")
+            except:
+                cert_hash = ""
+        else:
+            cert_hash = ""
+
+        try:
+            # Get the url of target and ignore the IP
+            target = issue.get("URLs")[0].get("URL").split(" - ")[0]
+        except:
+            target = ""
+
+        pre_id = summary + ":" + str(cwe_id) + ":" + target + ":" + cert_hash
 
         # Compute the id
         if pre_id:

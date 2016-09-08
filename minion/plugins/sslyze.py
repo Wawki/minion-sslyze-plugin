@@ -330,6 +330,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
                     if "sha1" in signature_algo:
                         self.issue_manager.signed_with_sha1()
+                        self.issue_manager.no_ats_valid({"sha1": True})
 
                 # Get the certificate hash
                 cert_hash = result.find(".//certificate[@position='leaf']").get('sha1Fingerprint')
