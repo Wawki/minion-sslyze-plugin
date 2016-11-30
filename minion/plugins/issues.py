@@ -279,7 +279,7 @@ class IssueManager:
                 "Description":  "The certificate for this domain is signed with SHA-1. This signature algorithm "
                                 "is deprecated and will be forbidden in 2017. "
                                 "You need to update your certificate with a better signature algorithm like SHA-2 "
-                                "because soon browsers won't alloy it.",
+                                "because soon browsers won't allow it.",
                 "Classification": {
                     "cwe_id": "327",
                     "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"

@@ -16,10 +16,10 @@ from issues import IssueManager
 
 class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_NAME = "SSlyze"
-    PLUGIN_VERSION = "0.13.6"
+    PLUGIN_VERSION = "0.14.1"
     PLUGIN_WEIGHT = "light"
 
-    SSLyze_NAME = "sslyze_cli.py"
+    SSLyze_NAME = "sslyze"
 
     MINIMUM_PUB_KEY_SIZE_RSA = 2048
     MINIMUM_PUB_KEY_SIZE_ECCD = 256
@@ -226,7 +226,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 self.issue_manager.heartbleed()
 
             # HSTS
-            hsts = result.find(".//hsts/httpStrictTransportSecurity")
+            hsts = result.find(".//http_headers/httpStrictTransportSecurity")
             if hsts is not None and hsts.get("isSupported") == "False":
                 self.issue_manager.no_hsts()
 
@@ -318,19 +318,21 @@ class SSLyzePlugin(ExternalProcessPlugin):
                 self.check_wildcard(names)
 
                 # Check if the certificate chain is in the correct order
-                chain_order = result.find(".//certificateChain").get('isChainOrderValid')
+                chain_order = result.find(".//receivedCertificateChain").get('isChainOrderValid')
                 if chain_order != "True":
                     self.issue_manager.wrong_chain_order()
 
                 # Check if the certificate is signed with sha1
-                signed_with_sha1 = result.find(".//certificateChain").get('hasSha1SignedCertificate')
-                if signed_with_sha1 == "True":
-                    # Check only the leaf certificate for the moment
-                    signature_algo = result.find(".//certificate[@position='leaf']/signatureAlgorithm").text
+                sha1_node = result.find(".//verifiedCertificateChain")
+                if sha1_node:
+                    signed_with_sha1 = sha1_node.get('hasSha1SignedCertificate')
+                    if signed_with_sha1 == "True":
+                        # Check only the leaf certificate for the moment
+                        signature_algo = result.find(".//certificate[@position='leaf']/signatureAlgorithm").text
 
-                    if "sha1" in signature_algo:
-                        self.issue_manager.signed_with_sha1()
-                        self.issue_manager.no_ats_valid({"sha1": True})
+                        if "sha1" in signature_algo:
+                            self.issue_manager.signed_with_sha1()
+                            self.issue_manager.no_ats_valid({"sha1": True})
 
                 # Get the certificate hash
                 cert_hash = result.find(".//certificate[@position='leaf']").get('sha1Fingerprint')
@@ -500,7 +502,7 @@ class SSLyzePlugin(ExternalProcessPlugin):
 
         # PluginHSTS
         if "hsts" in self.configuration:
-            args += ["--hsts"]
+            args += ["--http_headers"]
 
         # External --ca_file
         if "ca_file" in self.configuration:
