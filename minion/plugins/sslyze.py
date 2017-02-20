@@ -16,7 +16,7 @@ from issues import IssueManager
 
 class SSLyzePlugin(ExternalProcessPlugin):
     PLUGIN_NAME = "SSlyze"
-    PLUGIN_VERSION = "0.14.1"
+    PLUGIN_VERSION = "1.0.0"
     PLUGIN_WEIGHT = "light"
 
     SSLyze_NAME = "sslyze"
@@ -463,8 +463,8 @@ class SSLyzePlugin(ExternalProcessPlugin):
             args += ["--pass", self.configuration["pass"]]
 
         # PluginCertInfo
-        if "certinfo" in self.configuration:
-            args += ["--certinfo_%s" % self.configuration["certinfo"]]
+        if "certinfo" in self.configuration and self.configuration["certinfo"]:
+            args += ["--certinfo"]
 
         # PluginHeartbleed
         if "heartbleed" in self.configuration:
