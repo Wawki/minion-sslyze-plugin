@@ -17,4 +17,4 @@ setup(name="minion-sslyze-plugin",
       packages=['minion', 'minion.plugins'],
       namespace_packages=['minion', 'minion.plugins'],
       include_package_data=True,
-      install_requires = install_requires)
+      install_requires=install_requires)

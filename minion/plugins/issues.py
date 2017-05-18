@@ -387,7 +387,7 @@ class IssueManager:
         (preferred_cipher, accepted_ciphers) = content
 
         precisions = dict()
-        precisions["Extra"] = "Preferred Cipher: %s<br/>" % preferred_cipher[0]
+        precisions["Extra"] = "Preferred Cipher: %s<br/>" % preferred_cipher
         precisions["Extra"] += "Accepted Ciphers: %s" % ", ".join(accepted_ciphers)
 
         return precisions
