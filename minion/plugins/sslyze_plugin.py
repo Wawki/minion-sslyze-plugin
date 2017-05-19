@@ -14,11 +14,9 @@ from scanner import Scanner
 
 
 class SSLyzePlugin(BlockingPlugin):
-    PLUGIN_NAME = "SSlyze"
+    PLUGIN_NAME = "SSlyze_Plugin"
     PLUGIN_VERSION = "1.1.0"
     PLUGIN_WEIGHT = "light"
-
-    SSLyze_NAME = "sslyze"
 
     # Instantiation of output
     report_dir = "/tmp/artifacts/"

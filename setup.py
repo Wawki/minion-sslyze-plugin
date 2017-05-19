@@ -5,11 +5,12 @@
 from setuptools import setup
 
 install_requires = [
-    'minion-backend'
+      'minion-backend',
+      'sslyze'
 ]
 
 setup(name="minion-sslyze-plugin",
-      version="0.1",
+      version="0.2",
       description="SSlyze Plugin for Minion",
       url="https://github.com/Wawki/minion-sslyze-plugin/",
       author="Frederic Guegan",
