@@ -423,7 +423,7 @@ class Scanner:
                         break
         # As a fallback, just check the leaf certificate (still better than nothing)
         else:
-            cert = self.certificate_chain[0]
+            cert = scan_result.certificate_chain[0]
             if isinstance(cert.signature_hash_algorithm, hashes.SHA1):
                     self.has_sha1_in_certificate_chain = True
 
