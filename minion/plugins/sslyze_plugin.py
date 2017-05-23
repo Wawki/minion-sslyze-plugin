@@ -3,29 +3,26 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import logging
-import os
 import uuid
-import socket
 from urlparse import urlparse
 from minion.plugins.base import BlockingPlugin
 
 
-from scanner import Scanner
+from sslyze_scanner import SSLyzeScanner
 
 
 class SSLyzePlugin(BlockingPlugin):
     PLUGIN_NAME = "SSlyze_Plugin"
-    PLUGIN_VERSION = "1.1.0"
+    PLUGIN_VERSION = "1.1.1"
     PLUGIN_WEIGHT = "light"
 
     # Instantiation of output
     report_dir = "/tmp/artifacts/"
     output_id = str(uuid.uuid4())
-    schedule_stderr = ""
     logger = None
-    logger_path = ""
+    logger_path = "log.txt"
 
-    scanner = Scanner()
+    scanner = SSLyzeScanner()
 
     def initialize_logger(self):
         """
@@ -48,12 +45,6 @@ class SSLyzePlugin(BlockingPlugin):
 
         # add ch to logger
         self.logger.addHandler(ch)
-
-        # self.logger.debug('debug message')
-        # self.logger.info('info message')
-        # self.logger.warn('warn message')
-        # self.logger.error('error message')
-        # self.logger.critical('critical message')
 
     def _check_options(self):
         # General
@@ -183,9 +174,9 @@ class SSLyzePlugin(BlockingPlugin):
 
         if 'report_dir' in self.configuration:
             self.report_dir = self.configuration['report_dir']
+            self.logger_path = "{dir}logging_{output}.txt".format(dir=self.report_dir, output=self.output_id)
 
     def do_run(self):
-
         url = urlparse(self.configuration['target'])
         target = url.hostname
 
@@ -194,13 +185,16 @@ class SSLyzePlugin(BlockingPlugin):
             target = url.path
 
         # Build the scanner
-        self.scanner = Scanner([target])
+        self.scanner = SSLyzeScanner([target])
 
         # Set constants data
         self.set_data()
 
         # Apply parameters from config
         self._check_options()
+
+        # Create logger
+        self.initialize_logger()
 
         # Run actual scan against targets
         self.scanner.run()
@@ -217,6 +211,7 @@ class SSLyzePlugin(BlockingPlugin):
         # Exit
         return
 
+    """
     def do_process_ended(self, status):
         if self.stopping and status == 9:
             self.report_finish("STOPPED")
@@ -240,22 +235,9 @@ class SSLyzePlugin(BlockingPlugin):
                 "message": "Plugin failed"
             }
             self.report_finish("FAILED", failure)
-
+    """
     def _save_artifacts(self):
-        stdout_log = self.report_dir + "STDOUT_" + self.output_id + ".txt"
-        stderr_log = self.report_dir + "STDERR_" + self.output_id + ".txt"
-        output_artifacts = []
-
-        if self.sslyze_stdout:
-            with open(stdout_log, 'w+') as f:
-                f.write(self.sslyze_stdout)
-            output_artifacts.append(stdout_log)
-        if self.sslyze_stderr:
-            with open(stderr_log, 'w+') as f:
-                f.write(self.sslyze_stderr)
-            output_artifacts.append(stderr_log)
+        output_artifacts = [self.logger_path]
 
         if output_artifacts:
             self.report_artifacts("SSLyze Output", output_artifacts)
-        if os.path.isfile(self.xml_output):
-            self.report_artifacts("SSLyze XML Report", [self.xml_output])

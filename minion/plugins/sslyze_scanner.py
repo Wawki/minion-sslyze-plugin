@@ -25,7 +25,7 @@ from sslyze.plugins.session_resumption_plugin import *
 from issues import IssueManager
 
 
-class Scanner:
+class SSLyzeScanner:
     """
     Minimum size of public key used by certificate before raising issue  
     """
@@ -221,36 +221,35 @@ class Scanner:
         """
         Run a scan on each target defined with the defined plugin commands
         """
-        if self.resolve_ip:
-            try:
-                import dns.resolver
+        # List of resolved target list[(target, ServerConnectivityInfo)]
+        resolved_list = []
 
-                resolved_list = []
-
-                # Resolve IP for each target
-                for target in self.target_list:
+        # Build target for sslyze
+        for target in self.target_list:
+            if self.resolve_ip:
+                try:
+                    import dns.resolver
+                    # Resolve IP for each target
                     answer = dns.resolver.query(target, 'A')
 
                     for ip in answer:
+                        conn = ServerConnectivityInfo(hostname=target, ip_address=ip.address)
                         target = "%s{%s}" % (target, ip)
 
-                        resolved_list.append(target)
-
-                # Update the target list
-                self.target_list = resolved_list
-
-            except:
-                raise Exception("Cannot load dnspython library, can't resolve ip from target")
+                        resolved_list.append((target, conn))
+                except:
+                    raise Exception("Cannot load dnspython library, can't resolve ip from target")
+            else:
+                conn = ServerConnectivityInfo(hostname=target)
+                resolved_list.append((target, conn))
 
         # Browse targets
-        for target in self.target_list:
-            server_info = None
+        for target, server_info in resolved_list:
             finger_print = None
             issuer = None
 
             try:
                 # Check connectivity to server
-                server_info = ServerConnectivityInfo(hostname=target)
                 server_info.test_connectivity_to_server()
 
             except ServerConnectivityError as e:
@@ -277,7 +276,9 @@ class Scanner:
                 # Sometimes a scan command can unexpectedly fail (as a bug);
                 # it is returned as a PluginRaisedExceptionResult
                 if isinstance(scan_result, PluginRaisedExceptionScanResult):
-                    raise RuntimeError(u'Scan command failed: {}'.format(scan_result.as_text()))
+                    logging.error(u'Scan command failed: {}'.format(scan_result.as_text()))
+                    #raise RuntimeError(u'Scan command failed: {}'.format(scan_result.as_text()))
+                    continue
 
                 # Check certificate validity
                 if isinstance(scan_result.scan_command, CertificateInfoScanCommand):
@@ -325,7 +326,7 @@ class Scanner:
 
                 # Check session renegotiation
                 if isinstance(scan_result.scan_command, SessionRenegotiationScanCommand):
-                    self._validate_openssl_ccs(scan_result)
+                    self._validate_session_reneg(scan_result)
 
                 # Check session resumption
                 if isinstance(scan_result.scan_command, SessionResumptionSupportScanCommand):
@@ -352,6 +353,9 @@ class Scanner:
         :return tuple containing certificate hash and the authority signing it
         :rtype (str,str)
         """
+        for line in scan_result.as_text():
+            logging.info(line)
+
         # Get the leaf certificate
         cert = scan_result.certificate_chain[0]
 
@@ -423,9 +427,10 @@ class Scanner:
                         break
         # As a fallback, just check the leaf certificate (still better than nothing)
         else:
-            cert = self.certificate_chain[0]
+            cert = scan_result.certificate_chain[0]
             if isinstance(cert.signature_hash_algorithm, hashes.SHA1):
-                    self.has_sha1_in_certificate_chain = True
+                self.issue_manager.signed_with_sha1()
+                self.issue_manager.no_ats_valid({"sha1": True})
 
         # Check CA validation
         if not scan_result.successful_trust_store:
@@ -497,6 +502,9 @@ class Scanner:
         :param scan_result : result of the plugin
         :type scan_result  : CompressionScanResult
         """
+        for line in scan_result.as_text():
+            logging.info(line)
+
         # Check if a compression method is used
         if scan_result.compression_name:
             self.issue_manager.insecure_compression([scan_result.compression_name])
@@ -507,6 +515,9 @@ class Scanner:
         :param scan_result : result of the plugin
         :type scan_result  : FallbackScsvScanResult
         """
+        for line in scan_result.as_text():
+            logging.info(line)
+
         if not scan_result.supports_fallback_scsv:
             # FIXME raise issue
             pass
@@ -517,6 +528,9 @@ class Scanner:
         :param scan_result : result of the plugin
         :type scan_result  : HeartbleedScanResult
         """
+        for line in scan_result.as_text():
+            logging.info(line)
+
         if scan_result.is_vulnerable_to_heartbleed:
             self.issue_manager.heartbleed()
 
@@ -526,6 +540,9 @@ class Scanner:
         :param scan_result  : result of the plugin
         :type scan_result   : HttpHeadersScanResult
         """
+        for line in scan_result.as_text():
+            logging.info(line)
+
         # Check for presence of ParsedHstsHeader
         if not scan_result.hsts_header:
             self.issue_manager.no_hsts()
@@ -538,6 +555,9 @@ class Scanner:
         :param scan_result  : result of the plugin
         :type scan_result   : OpenSslCcsInjectionScanResult
         """
+        for line in scan_result.as_text():
+            logging.info(line)
+
         if scan_result.is_vulnerable_to_ccs_injection:
             # TODO implement issue for OpenSSL CCS injection vulnerability (CVE-2014-0224)
             pass
@@ -548,6 +568,8 @@ class Scanner:
         :param scan_result  : result of the plugin 
         :type scan_result   : SessionRenegotiationScanResult
         """
+        for line in scan_result.as_text():
+            logging.info(line)
 
         if scan_result.accepts_client_renegotiation:
             self.issue_manager.client_renegotiation()
@@ -561,6 +583,9 @@ class Scanner:
         :param scan_result  : result of the plugin 
         :type scan_result   : SessionResumptionSupportScanResult
         """
+        for line in scan_result.as_text():
+            logging.info(line)
+
         # Check session resumption results.
         # From what I read from the plugin's code, it fails if not every attempt is successful
         # TODO give more info about result

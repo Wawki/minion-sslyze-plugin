@@ -4,7 +4,7 @@
 
 import unittest
 
-from scanner import Scanner
+from sslyze_scanner import SSLyzeScanner
 
 
 class TestScanner(unittest.TestCase):
@@ -39,18 +39,19 @@ class TestScanner(unittest.TestCase):
             scan.set_tld_list([line.strip() for line in tld_file if line[0] not in "/\n"])
         
         """
-        scan = Scanner(["perdu.com"])
+        scan = SSLyzeScanner(["perdu.fr"])
         scan.set_blacklisted_ciphers(self.configuration["blacklist_cipher"].split(':'))
         scan.set_whitelisted_ciphers(self.configuration["whitelist_cipher"].split(':'))
         scan.set_forward_sec_ciphers(self.configuration["forward_sec_cipher"].split(':'))
         scan.define_enforced_order(self.configuration["enforce_order"])
         scan.set_deprecated_ciphers(self.configuration["deprecated"].split(':'))
 
-        #scan.set_host_resolution(True)
+        scan.set_host_resolution(True)
 
         scan.check_ssl_v2()
+        scan.check_heartbleed()
         scan.check_tls_v12()
-        scan.check_certinfo()
+        #scan.check_certinfo()
 
         scan.run()
         for i in scan.generate_issues():
