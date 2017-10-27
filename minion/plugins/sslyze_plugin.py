@@ -196,6 +196,9 @@ class SSLyzePlugin(BlockingPlugin):
         # Create logger
         self.initialize_logger()
 
+        # Save logs
+        self._save_artifacts()
+
         # Run actual scan against targets
         self.scanner.run()
 
@@ -205,10 +208,6 @@ class SSLyzePlugin(BlockingPlugin):
         # Report issues to minion
         self.report_issues(issues)
 
-        # Save logs
-        self._save_artifacts()
-
-        # Exit
         return
 
     """

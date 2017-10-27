@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import datetime
+import httplib
 import logging
 
 from cryptography import x509
@@ -269,7 +270,7 @@ class SSLyzeScanner:
             for scan_result in concurrent_scanner.get_results():
                 # All scan results have the corresponding scan_command and server_info as an attribute
 
-                logging.debug(u'\nReceived scan result for {} on host {}'.format(
+                logging.debug(u'Received scan result for {} on host {}'.format(
                     scan_result.scan_command.__class__.__name__, scan_result.server_info.hostname))
 
                 # TODO handle error
@@ -332,6 +333,9 @@ class SSLyzeScanner:
                 if isinstance(scan_result.scan_command, SessionResumptionSupportScanCommand):
                     self._validate_session_resumption(scan_result)
 
+            # Check http to https redirection
+            self._validate_http_redirection(target)
+
             # Update issuer manager with target info
             infos = {"URL": target, "IP": server_info.ip_address, "CA": finger_print, "issuer": issuer}
             self.issue_manager.add_target_info(infos)
@@ -342,6 +346,43 @@ class SSLyzeScanner:
         :return: list of issues
         """
         return self.issue_manager.generate_issues()
+
+    def _validate_http_redirection(self, target):
+        """
+        Check if hostname redirects http to https
+        :param target:  hostname with or without ip like foo.bar.io or evil.corp.ws{1.2.3.4}
+        :type target:   str
+        """
+        # Parse target for ip and hostname
+        parsed = target.split("{")
+        host = parsed[0]
+        ip = None
+        if len(parsed) > 1:
+            # Remove trailing }
+            ip = parsed[1][:-1]
+        else:
+            ip = host
+
+        # Build request
+        h = httplib.HTTPConnection(ip)
+        h.request('GET', '/', headers={'host': host})
+        response = h.getresponse()
+
+        # Check if there is a redirection
+        code = response.status
+        if code in [301, 302]:
+            # Check the location contains https redirect
+            location = response.getheader('Location')
+            if location.startswith("https://"):
+                logging.info("Received redirection from http to https : {code} - {loc}".format(code=code, loc=location))
+            else:
+                # fail
+                self.issue_manager.no_http_redirect(code, location)
+                logging.info("Did not redirect http to https : {code} - {loc}".format(code=code, loc=location))
+        else:
+            # fail
+            self.issue_manager.no_http_redirect(code, location=response.reason)
+            logging.info("Did not redirect http to https : {code}".format(code=code))
 
     def _validate_certificate(self, scan_result, hostname):
         """
@@ -433,6 +474,7 @@ class SSLyzeScanner:
                 self.issue_manager.no_ats_valid({"sha1": True})
 
         # Check CA validation
+        # FIXME handle case only result of custom CA matters
         if not scan_result.successful_trust_store:
             text_error = ""
             for result in scan_result.path_validation_result_list:

@@ -298,6 +298,18 @@ class IssueManager:
                 },
                 "issue_type": "configuration",
                 "handler": self.handler_ats_not_valid
+            },
+            "http_redirect": {
+                "Summary": "No HTTP to HTTPS redirection",
+                "Severity": "Info",
+                "Description":  "When connecting with HTTP GET, the server did not redirect to a HTTPS connexion"
+                ,
+                "Classification": {
+                    "cwe_id": "327",
+                    "cwe_url": "http://cwe.mitre.org/data/definitions/327.html"
+                },
+                "issue_type": "configuration",
+                "handler": self.handler_http_no_redirect
             }
         }
 
@@ -617,6 +629,22 @@ class IssueManager:
                 precisions["Extra"] += "None of the ciphers proposed for TLS v1.2 supports Perfect Forward Secrecy<br/>"
             elif key == "sha1":
                 precisions["Extra"] += "The certificate is signed with SHA-1<br/>"
+
+        return precisions
+
+    def no_http_redirect(self, return_code, location=None, target=None):
+        self.add_issues("http_redirect", {"code": return_code, "loc": location}, target)
+
+    def handler_http_no_redirect(self, content):
+        # Unpack
+        content = content[0]
+        precisions = dict()
+
+        # extract content
+        code = content.get('code')
+        location = content.get('loc')
+
+        precisions["Extra"] = "The server answer of the HTTP GET was {code} - {loc}".format(code=code, loc=location)
 
         return precisions
 
