@@ -632,8 +632,9 @@ class IssueManager:
 
         return precisions
 
-    def no_http_redirect(self, return_code, location=None, target=None):
-        self.add_issues("http_redirect", {"code": return_code, "loc": location}, target)
+    def no_http_redirect(self, return_code, final_https=False, final_destination=None, location=None, target=None):
+        self.add_issues("http_redirect", {"code": return_code, "loc": location,
+                                          "final_https": final_https, "final_dest": final_destination}, target)
 
     def handler_http_no_redirect(self, content):
         # Unpack
@@ -643,8 +644,16 @@ class IssueManager:
         # extract content
         code = content.get('code')
         location = content.get('loc')
+        final_https_redirect = content.get('final_https')
 
-        precisions["Extra"] = "The server answer of the HTTP GET was {code} - {loc}".format(code=code, loc=location)
+        # Check if the first redirect was to https
+        if final_https_redirect:
+            final_dest = content.get('final_dest')
+            precisions["Extra"] = "The server answer of the HTTP GET was {code} - {loc} " \
+                                  "but the final destination was in HTTPS : {f_dest}".\
+                format(code=code, loc=location, f_dest=final_dest)
+        else:
+            precisions["Extra"] = "The server answer of the HTTP GET was {code} - {loc}".format(code=code, loc=location)
 
         return precisions
 

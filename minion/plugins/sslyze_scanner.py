@@ -4,6 +4,7 @@
 
 import datetime
 import httplib
+import requests
 import logging
 
 from cryptography import x509
@@ -347,42 +348,93 @@ class SSLyzeScanner:
         """
         return self.issue_manager.generate_issues()
 
-    def _validate_http_redirection(self, target):
+    def _validate_http_redirection(self, target, use_ip=True):
         """
         Check if hostname redirects http to https
         :param target:  hostname with or without ip like foo.bar.io or evil.corp.ws{1.2.3.4}
         :type target:   str
+        :param use_ip:  use ip specified with target for request
         """
         # Parse target for ip and hostname
         parsed = target.split("{")
         host = parsed[0]
         ip = None
-        if len(parsed) > 1:
+        if len(parsed) > 1 and use_ip:
             # Remove trailing }
             ip = parsed[1][:-1]
         else:
             ip = host
 
-        # Build request
-        h = httplib.HTTPConnection(ip)
-        h.request('GET', '/', headers={'host': host})
-        response = h.getresponse()
+        # Add the scheme wanted by request
+        url = "http://{ip}".format(ip=ip)
 
-        # Check if there is a redirection
-        code = response.status
-        if code in [301, 302]:
-            # Check the location contains https redirect
-            location = response.getheader('Location')
-            if location.startswith("https://"):
-                logging.info("Received redirection from http to https : {code} - {loc}".format(code=code, loc=location))
+        # Build request (request will follow redirection until final destination reached)
+        try:
+            if use_ip:
+                response = requests.get(url, headers={'Host': host})
+            else:
+                response = requests.get(url)
+
+            code = response.status_code
+
+            # Check if there has been a redirection
+            if response.history:
+                # Check the original redirection url
+                fr = response.history[0]
+                fr_loc = fr.headers.get("Location")
+
+                if fr_loc.startswith("https://"):
+                    logging.info("Received redirection from HTTP to HTTPS : {code} - {loc}".
+                                 format(code=code, loc=fr_loc))
+                else:
+                    # FIXME raise an issue if the first redirect was not to https
+                    # Check if the last redirection is https even if the first was not
+                    location = response.url
+                    if location.startswith("https://"):
+                        logging.info("The first redirection was not to HTTPS but to {fr_loc}\n"
+                                     "Then it received a redirect to HTTPS : {code} - {loc}".
+                                     format(fr_loc=fr_loc, code=code, loc=location))
+                        self.issue_manager.no_http_redirect(code, final_https=True, final_destination=location,
+                                                            location=fr_loc)
+                    else:
+                        # fail
+                        self.issue_manager.no_http_redirect(code, location)
+                        logging.info("Did not redirect HTTP to HTTPS : {code} - {loc}".format(code=code, loc=location))
+            # Case no redirect
             else:
                 # fail
-                self.issue_manager.no_http_redirect(code, location)
-                logging.info("Did not redirect http to https : {code} - {loc}".format(code=code, loc=location))
-        else:
-            # fail
-            self.issue_manager.no_http_redirect(code, location=response.reason)
-            logging.info("Did not redirect http to https : {code}".format(code=code))
+                self.issue_manager.no_http_redirect(code, location=response.reason)
+                logging.info("Did not redirect HTTP to HTTPS : {code}".format(code=code))
+        except requests.exceptions.TooManyRedirects:
+            # Retry without ip resolution bypass
+            try:
+                self._validate_http_redirection(target, use_ip=False)
+            except:
+                # Use old method
+                h = httplib.HTTPConnection(ip)
+                h.request('GET', '/', headers={'host': host})
+                response = h.getresponse()
+
+                # Check if there is a redirection
+                code = response.status
+                if code in [301, 302]:
+                    # Check the location contains https redirect
+                    location = response.getheader('Location')
+                    if location.startswith("https://"):
+                        logging.info("Received redirection from HTTP to HTTPS : {code} - {loc}".format(code=code, loc=location))
+                    else:
+                        # fail
+                        self.issue_manager.no_http_redirect(code, location=location)
+                        logging.info("Did not redirect HTTP to HTTPS : {code} - {loc}".format(code=code, loc=location))
+                else:
+                    # fail
+                    self.issue_manager.no_http_redirect(code, location=response.reason)
+                    logging.info("Did not redirect HTTP to HTTPS : {code}".format(code=code))
+        except Exception as e:
+            logging.warning("Could not request {target}, {message}".format(target=target, message=e.message))
+
+
+
 
     def _validate_certificate(self, scan_result, hostname):
         """
