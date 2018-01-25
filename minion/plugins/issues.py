@@ -310,6 +310,17 @@ class IssueManager:
                 },
                 "issue_type": "configuration",
                 "handler": self.handler_http_no_redirect
+            },
+            "ROBOT": {
+                "Summary": "ROBOT vulnerable",
+                "Severity": "Medium",
+                "Description": "Vulnerable with the Return Of Bleichenbacher's Oracle Threat vulnerability. "
+                               "It means an attacker can passively record traffic and later decrypt it",
+                "Classification": {
+                    "cwe_id": "126",
+                    "cwe_url": "http://cwe.mitre.org/data/definitions/126.html"
+                },
+                "issue_type": "configuration"
             }
         }
 
@@ -654,6 +665,21 @@ class IssueManager:
                 format(code=code, loc=location, f_dest=final_dest)
         else:
             precisions["Extra"] = "The server answer of the HTTP GET was {code} - {loc}".format(code=code, loc=location)
+
+        return precisions
+
+    def robot_vulnerability(self, level, target=None):
+        self.add_issues("ROBOT", level, target)
+
+    def handler_robot(self, content):
+        # extract content
+        result = content[0]
+
+        # FIXME change severity
+
+        # Add description
+        precisions = dict()
+        precisions["Evidence"] = result
 
         return precisions
 

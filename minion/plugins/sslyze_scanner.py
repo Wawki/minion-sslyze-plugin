@@ -21,6 +21,7 @@ from sslyze.plugins.http_headers_plugin import *
 from sslyze.plugins.heartbleed_plugin import *
 from sslyze.plugins.openssl_ccs_injection_plugin import *
 from sslyze.plugins.openssl_cipher_suites_plugin import *
+from sslyze.plugins.robot_plugin import *
 from sslyze.plugins.session_renegotiation_plugin import *
 from sslyze.plugins.session_resumption_plugin import *
 
@@ -82,6 +83,13 @@ class SSLyzeScanner:
         Add the Heartbleed plugin to the scan
         """
         self._add_command(HeartbleedScanCommand())
+
+    def check_robot(self):
+        """
+        Add the Robot test to the scan
+        :return:
+        """
+        self._add_command(RobotScanCommand())
 
     def check_session_resumption(self):
         """
@@ -334,6 +342,10 @@ class SSLyzeScanner:
                 if isinstance(scan_result.scan_command, SessionResumptionSupportScanCommand):
                     self._validate_session_resumption(scan_result)
 
+                # Check ROBOT vulnerability
+                if isinstance(scan_result.scan_command, RobotScanCommand):
+                    self._validate_robot(scan_result)
+
             # Check http to https redirection
             self._validate_http_redirection(target)
 
@@ -348,12 +360,15 @@ class SSLyzeScanner:
         """
         return self.issue_manager.generate_issues()
 
-    def _validate_http_redirection(self, target, use_ip=True):
+    def _validate_http_redirection(self, target, use_ip=True, retry=True):
         """
         Check if hostname redirects http to https
         :param target:  hostname with or without ip like foo.bar.io or evil.corp.ws{1.2.3.4}
         :type target:   str
         :param use_ip:  use ip specified with target for request
+        :type use_ip:   bool
+        :param retry:   flag to retry without ip specification, False allows to break the recursive calls
+        :type retry:    bool
         """
         # Parse target for ip and hostname
         parsed = target.split("{")
@@ -405,10 +420,14 @@ class SSLyzeScanner:
                 # fail
                 self.issue_manager.no_http_redirect(code, location=response.reason)
                 logging.info("Did not redirect HTTP to HTTPS : {code}".format(code=code))
-        except requests.exceptions.TooManyRedirects:
+        except requests.exceptions.TooManyRedirects as e:
+            # Break if inside recursive loop
+            if not retry:
+                raise e
+
             # Retry without ip resolution bypass
             try:
-                self._validate_http_redirection(target, use_ip=False)
+                self._validate_http_redirection(target, use_ip=False, retry=False)
             except:
                 # Use old method
                 h = httplib.HTTPConnection(ip)
@@ -432,9 +451,6 @@ class SSLyzeScanner:
                     logging.info("Did not redirect HTTP to HTTPS : {code}".format(code=code))
         except Exception as e:
             logging.warning("Could not request {target}, {message}".format(target=target, message=e.message))
-
-
-
 
     def _validate_certificate(self, scan_result, hostname):
         """
@@ -483,8 +499,12 @@ class SSLyzeScanner:
         cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
 
         # Get subject alt name
-        ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
-        san_list = ext.value.get_values_for_type(x509.DNSName)
+        try:
+            ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
+            san_list = ext.value.get_values_for_type(x509.DNSName)
+        except Exception as e:
+            logging.error("Could not find Subject Alt Name for certificate : {err}".format(err=e.message))
+            san_list = []
 
         # Add the common name if missing
         # TODO raise an issue
@@ -688,6 +708,30 @@ class SSLyzeScanner:
 
         if not scan_result.is_ticket_resumption_supported:
             self.issue_manager.session_resumption_ticket()
+
+    def _validate_robot(self, scan_result):
+        """
+        Check ROBOT vulnerability result
+        :param scan_result:     result of the plugin
+        :type scan_result:      RobotScanResult
+        """
+        for line in scan_result.as_text():
+            logging.info(line)
+
+        # Check result value :
+        res = scan_result.robot_result_enum
+
+        if res == RobotScanResultEnum.VULNERABLE_WEAK_ORACLE:
+            # Raise issue
+            self.issue_manager.robot_vulnerability("The server is vulnerable but the attack would take too long")
+        elif res == RobotScanResultEnum.VULNERABLE_STRONG_ORACLE:
+            # Raise issue
+            self.issue_manager.robot_vulnerability("The server is vulnerable and real attacks are feasible")
+        elif res in (RobotScanResultEnum.NOT_VULNERABLE_NO_ORACLE, RobotScanResultEnum.NOT_VULNERABLE_RSA_NOT_SUPPORTED):
+            # Info not vulnerable
+            logging.info("Not vulnerable to ROBOT vulnerability")
+        elif res == RobotScanResultEnum.UNKNOWN_INCONSISTENT_RESULTS:
+            logging.info("Inconsistent results found")
 
     def _filter_cipher(self, accepted_ciphers, version, need_fs=False):
         """

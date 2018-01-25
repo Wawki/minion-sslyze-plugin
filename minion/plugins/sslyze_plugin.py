@@ -141,6 +141,10 @@ class SSLyzePlugin(BlockingPlugin):
         if "scsv" in self.configuration:
             self.scanner.check_scsv_fallback()
 
+        # Plugin ROBOT vulnerability
+        if "robot" in self.configuration:
+            self.scanner.check_robot()
+
     def set_data(self):
 
         if "blacklist_cipher" in self.configuration:
