@@ -244,9 +244,9 @@ class SSLyzeScanner:
 
                     for ip in answer:
                         conn = ServerConnectivityInfo(hostname=target, ip_address=ip.address)
-                        target = "%s{%s}" % (target, ip)
+                        actual_target = "%s{%s}" % (target, ip)
 
-                        resolved_list.append((target, conn))
+                        resolved_list.append((actual_target, conn))
                 except:
                     raise Exception("Cannot load dnspython library, can't resolve ip from target")
             else:
